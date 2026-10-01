@@ -897,6 +897,17 @@ Client was asked how to handle it (fix the rounding vs. just flag the 1-peso gap
 **Status:** ✅ fixed, re-verified against live production data, pushed to both remotes.
 
 ---
+### EXPIRY DATE ADDED (01 Oct 2026) — Col: "end date will be end of the member months, December 31"
+
+Col's Fiverr-offer thread asked (among the scheduling/billing discussion about Step 11) for two things specific to TT50OFF: confirm the ₱99 price (already done above) and set an end date of December 31. Only the data needed updating, not the code — `valid_until` was `null` (no expiry) since original creation.
+
+**Set `valid_until` to the end of December 31, 2026, not the start of it** (`2026-12-31T23:59:59.999Z`, not `2026-12-31T00:00:00Z`) — deliberately chosen so the code stays valid through the entirety of Dec 31 for customers in any timezone, matching "end date will be end of the member months" rather than cutting the day off at its very first moment. Verified directly against the exact same expiry-check logic the checkout code uses (`new Date(valid_until) < new Date()`, found in both `public-checkout.js:407` and `gcash-payment-requests.js:596`): confirmed the code is not expired right now, confirmed it would correctly read as expired starting Jan 1 2027, and specifically confirmed it stays valid through the evening of Dec 31 in NZ time (not prematurely cut off by a timezone mismatch).
+
+No code changes — this was a one-row data update on the already-built, already-tested TT50OFF code, done via a temporary read-verify-update-verify script, deleted after use. Nothing to commit/push for this specific change.
+
+**Status:** ✅ done, verified against the real expiry-check logic the live checkout code actually runs.
+
+---
 ## STEP 11 — Daily automated smoke test (Playwright), NOT urgent, comes after the checklist
 
 **Client message (verbatim, sent right after confirming TT50OFF, explicitly framed as low-priority):** *"Once TT50OFF is live and working, I'd like a small automated test so we catch problems before customers do. It's not urgent, and it comes after the checklist. What it should do, each morning: Open thetributetimes.com and pick NZ. Make a test purchase using Stripe test mode (no real money). Apply a discount code, then check the price drops correctly. Check the keepsake email arrives. Repeat for the Philippines price (₱199), including TT50OFF. Email me at hello@tributetimes.co.nz only if something fails. I understand Playwright is a good free tool for this. GCash can stay manual."*
