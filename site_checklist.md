@@ -311,6 +311,18 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
+### ITEM 15 — "Promo/specials code takes 33% off"
+
+**Analysis:** Checked the real production database directly for any `campaign_single_use` code with `discount_value: 33`, and separately for anything with "promo" or "special" in its `batch_label` — **zero results on both searches.** No 33%-off promo/specials code currently exists in production at all. This is a genuinely different situation from Item 14 (where a code existed but was the wrong type) — here there's simply nothing to test against yet.
+
+**Checked whether the underlying mechanism would even support an arbitrary 33% value, to give an honest, evidence-based answer rather than just "can't test, unknown":** confirmed via code read (`src/phase2/admin-fulfilment.js:1209-1210`) the only validation on a discount percentage is `> 0 && <= 100` — no restriction to round numbers like 20/50, so 33 would pass validation exactly the same as any other value. Confirmed `applyPhpDiscount()` (`gcash-payment-requests.js:621-626`) computes `pct / 100` generically for any value, not special-cased for specific percentages. Combined with the already-proven-live 50% case (TT50OFF, confirmed via a real Stripe page showing an itemized discount in Item 13), this gives strong circumstantial evidence the mechanism itself would work correctly for 33% too — **but this is not the same as directly testing a real 33% code, and is reported as circumstantial evidence, not a substitute for direct proof.**
+
+**Problem:** This item cannot be marked done — there's no code to test. Didn't create a disposable 33%-off code in the live production database to manufacture a pass, consistent with this project's standing "don't leave test clutter in production" discipline and the "document, don't implement" instruction — creating a brand-new promo code is a real action with real consequences (a real Stripe coupon gets created, a real database row persists), not a safe, reversible read-only check.
+
+**Status:** 🟡 **cannot be verified as-is — no 33%-off promo/specials code exists in production to test.** The underlying mechanism has strong circumstantial evidence of working correctly (generic percentage math, no round-number restriction, proven live at 50%), but this item needs either (a) Col to point to the actual code he means if one exists somewhere not yet found, or (b) Col's explicit go-ahead to create a real test code for this specific verification, since doing so isn't a passive check.
+
+---
+
 ### ITEM 17 — "Launch override code works up to 50% off (TT50OFF – start here)"
 
 **Analysis:** TT50OFF was already built, tested, and pushed to production earlier this session (`new_changes.md` Step 10, plus a rounding fix and a Dec-31-2026 expiry added afterward). This item's real task per the checklist's own purpose — a fresh QA pass, not a rebuild — is independent re-verification against the *current* live state, confirmed with genuinely separate checks, not a re-paste of the earlier verification.
