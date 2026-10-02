@@ -304,3 +304,23 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 **Status:** 📝 **answered with everything checkable from here; the actual balance/payout figures are not visible to this session (confirmed via a real, denied API call, not assumed) — Col needs to check his own Stripe Dashboard's Balance and Payouts screens directly for the real numbers.** No code change — there is nothing in this codebase to fix for this item.
 
 ---
+
+### ITEM 65 — Col: "So do I approve this?? What happens then??" (Approve Reseller Request confirm dialog screenshot)
+
+**Client message (2 Oct 2026):** Screenshot of the admin panel's "Approve Reseller Request" confirmation dialog, which reads: *"Approve this reseller request? This creates a real reseller account and auto-generates their promo code."* Asking whether to approve, and what the real consequence is.
+
+**Analysis (confirmed by reading the real approval endpoint, `src/phase2/admin-fulfilment.js:2372-2439`, `POST /api/admin/reseller-requests/:id/approve` — not guessed):**
+
+**What clicking "Approve" actually, concretely does:**
+1. Creates a **real agent/consultant account** from everything the applicant submitted on the public sign-up form (name, email, phone, address, business type, social-media follower counts) — confirmed this pulls real structured data, not placeholder values.
+2. **Auto-generates a tracking/referral code** for them (e.g. a code like "colinM20" style, per this project's existing convention) — confirmed via `autoIssueAttributionCode()` that this is an **attribution/referral code**, the same type investigated earlier in this session's Step 5 — it's for crediting future sales back to this specific agent, **not a customer-facing discount code**. It doesn't give anyone money off; it tracks who referred a sale.
+3. If the applicant selected "business" as their type, Col gets asked first which specific kind (Florist / Cake Shop / Gift Store) before anything is created — confirmed this prompt fires before the dialog in the screenshot, so by the time this exact "Approve" dialog is showing, that choice (if needed) has already been made.
+4. The request itself is marked approved/processed — it won't show as pending anymore.
+
+**What it does NOT do** (worth Col knowing, since the dialog text is terse): it does not charge anyone, send a payment, or set up anything financial automatically beyond creating the tracking code — commission rate is a separate consultant-record field, not something this specific action sets to a surprising value.
+
+**Is it safe to approve?** Yes, in the sense that it does exactly and only what the dialog says — no hidden side effects found. The real decision for Col to make isn't technical, it's business: is this a legitimate applicant he actually wants as a reseller? That's not something this session can judge from the code — the screenshot only shows the confirmation dialog, not the actual applicant's details, which Col would see on the request row before clicking Approve.
+
+**Status:** ✅ **answered directly, no code change, no bug found — the confirm dialog's own text is accurate to what the code actually does.**
+
+---
