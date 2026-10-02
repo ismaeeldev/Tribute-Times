@@ -456,6 +456,24 @@ The control case matters: it proves `.trim()` (`public-checkout.js:385`, also `n
 
 ---
 
+### ITEM 23 — "Codes work in every displayed currency (NZ$, AU$, £, US$, ₱)"
+
+**Analysis:** This item directly intersects the already-documented cross-cutting finding (Items 2/3/4/7/8): `buildLineItems()` (`public-checkout.js:666-694`) hardcodes every Stripe line item to `currency: 'nzd'` no matter which currency flag the customer sees on screen — the displayed AU$/£/US$/₱ prices are estimates only, the real Stripe charge is always NZD.
+
+**Every real campaign code in production today is `percent`-type** (confirmed via a direct query: zero `fixed`-type codes exist) — and a Stripe `percent_off` coupon (e.g. TT50OFF's 50%) is mathematically currency-agnostic: it always discounts whatever currency the underlying charge is in by the same percentage, regardless of what the customer saw on the landing/checkout page beforehand. Confirmed via the real, live Stripe Checkout Session already captured in Item 13's testing: TT50OFF correctly showed "**-PKR 805.31 50% off... Total due PKR 803.69**" — Stripe's own page auto-converts the NZD charge to the customer's local display currency (PKR in that real test) and the 50% is applied correctly regardless.
+
+**The one real latent risk, structurally confirmed by code read, not yet triggered in practice:** if Col ever creates a `fixed`-type code (e.g. "$5 off"), `admin-fulfilment.js:1218` hardcodes that coupon's `currency: 'nzd'` too — consistent with the NZD-only line items, so it would still technically function (no crash, no mismatch between coupon currency and charge currency), but the "$5" would always mean NZ$5 regardless of the customer's displayed currency, which may not match what Col intends when creating a fixed-amount code while looking at, say, GBP figures. This is the same root cause as the cross-cutting finding, not a separate bug — noted here since it specifically affects discount codes once a `fixed`-type one is ever used (none are, today).
+
+**Confirmed real auto-detected currency display still works correctly for a non-NZ customer independent of discount codes** (UK timezone → `checkout-country-select` correctly auto-detects "United Kingdom", consistent with Items 6/7's already-proven results) — ruling out any interaction bug between currency auto-detection and promo-code entry.
+
+**Problem:** None found specific to discount codes beyond the already-documented cross-cutting NZD-hardcoding issue. Percent-off codes (100% of real codes today) are unaffected by it and work correctly in every displayed currency; a future fixed-amount code would be silently NZD-denominated regardless of intent.
+
+**Status:** ✅ **done for every code that currently exists (all percent-based, confirmed currency-agnostic via a real live Stripe session).** 🔶 Flagging the fixed-type/NZD-hardcoding risk as a known, currently-dormant extension of the already-reported cross-cutting currency finding — not a new independent bug, no code change made here (same reasoning as the cross-cutting finding: a product decision on multi-currency Stripe pricing, not a quick fix).
+
+---
+
+---
+
 ---
 
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
