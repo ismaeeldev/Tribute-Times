@@ -721,6 +721,20 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 42 — "No words broken mid-word ('Also On This Day')"
+
+**Analysis:** This exact wording ("Also On This Day") is a direct reference to a real, already-documented prior bug (`tribute-times-renderer.js:88`, "Client report 24 Aug 2026") — the AI content generator would sometimes return one long unbroken sentence, defeating the original sentence-boundary truncation logic and producing a mid-word cut like "...raise funds for the...". Confirmed this was genuinely fixed, not just claimed fixed, by running the real adversarial regression test already built for this exact bug rather than a fresh/weaker one.
+
+**Found and ran the real stress-test fixture already in the repo** (`scratch_renderer_stress_test.js`, explicitly built to "reproduce client-reported truncation issues... matching the AI prompt's stated maximums, deliberately ending near a word boundary... to mimic what real Claude output often looks like"), which calls the live, real `renderNewspaper()` function directly (`tribute-times-renderer.js`) with deliberately worst-case-length content for every section, including "Also On This Day." Rendered the real output and visually inspected every section at full resolution — confirmed **no mid-word breaks anywhere**, including in "Also On This Day" (both World items end cleanly on complete thoughts), "News of the Day," "Top of the Charts," and the personal message box. One apparent mid-word break found by an automated text-extraction check (`"cture built along the waterfront..."`) was investigated and confirmed to be a false positive from my own script's line-wrapping during text extraction, not a real rendering issue — the actual HTML source has the complete word "infrastructure" intact, confirmed via direct inspection of the generated markup.
+
+**Confirmed the underlying mechanism (`cleanTruncate()`, `tribute-times-renderer.js:45`) is a real, deliberate sentence/clause-aware truncation function** (prefers a full sentence boundary, falls back to a clause boundary at a comma/dash, falls back to a word boundary with abbreviation-awareness) that runs BEFORE content reaches the CSS `-webkit-line-clamp` properties found throughout the template — meaning the clamp (which, confirmed via code comments, WOULD hard-cut mid-word/mid-character if it ever received over-budget text) is never actually exercised with content long enough to force a mid-word cut, by design.
+
+**Problem:** None found — the original real bug is confirmed fixed and holding under a genuine adversarial worst-case test, not just a normal-length happy-path one.
+
+**Status:** ✅ **done — confirmed via the real, pre-existing adversarial stress test built specifically for this exact historical bug, re-run and visually verified fresh rather than just trusting the old fix was never regressed.**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
