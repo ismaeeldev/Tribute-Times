@@ -600,6 +600,24 @@ There are genuinely **two separate systems** in the admin dashboard, confirmed d
 
 ---
 
+## Section: Emails (items 33–40)
+
+### ITEM 33 — "Order confirmation arrives within a few minutes"
+
+**Analysis:** Searched exhaustively for a customer-facing order confirmation email on the real card/Stripe purchase path (the main, most common purchase path) — found a real, significant gap, confirmed three independent ways:
+
+**1. Code read:** every `sendEmail({...})` call in `public-checkout.js` was checked directly. Only two exist on the paid-order path: one to `PHASE2_CONFIG.adminAlertEmail` (`public-checkout.js:834-839`, subject "New public order paid..." — this is an **admin** notification, not a customer confirmation, confirmed by its own `to` field), and the second-purchase THANKYOU discount email (`public-checkout.js:875-885`, a completely different email about a future discount, not an order confirmation). **No "your order is confirmed" email to the customer exists anywhere in this file.**
+
+**2. Searched every other customer-facing email template for a fit:** `buildPostedOrderCustomerEmail()` is the only other customer email that could plausibly match — but confirmed via its real call site (`admin-fulfilment.js:3260-3277`) it only fires when a PHYSICAL print order's status changes to `posted` (shipped), completely irrelevant to a digital/card purchase.
+
+**3. Confirmed against real production data, not just code:** checked Col's own real test purchase (`TT-20261002-0005`, `colindavidmccabe@gmail.com`, already investigated in Item 66) and the most recent real paid orders — none of them have any customer-facing confirmation email code path that would have fired. The customer's actual access to their keepsake comes entirely from the browser redirect after Stripe payment (`success_url`, `public-checkout.js:104`) — if that redirect doesn't complete (closed tab, phone interruption, browser crash), the customer has no email fallback to find their keepsake at all.
+
+**Problem:** Real, significant gap. There is no order confirmation email at all for a card/Stripe digital purchase — only an internal admin notification and (if eligible) the unrelated second-purchase discount email. This is very plausibly connected to why this exact checklist item exists — Col may have noticed (from his own real test purchase) that no confirmation ever arrived.
+
+**Status:** 🔴 **fails — no customer order confirmation email exists for the Stripe/card path, confirmed via exhaustive code search and against real production order data.** This is a real, missing feature (not a bug in an existing one) — flagged for Col/implementation decision rather than built here, since it needs a defined scope (what should the email contain — download link? PDF attachment? Same content as the admin email?) before writing it.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
