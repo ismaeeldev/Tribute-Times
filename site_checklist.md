@@ -325,6 +325,22 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
+### ITEM 16 — "Florist wholesale code (WS + business name) takes 35% off"
+
+**Analysis — this item turned out to describe a genuinely different mechanism than Items 13-15, not another `promo_codes` entry:** searched the real production database exhaustively for any code starting with "WS" or any `promo_codes` row with `discount_value: 35` — **zero matches on both.** Rather than conclude "doesn't exist" and stop there, investigated further and found the real mechanism: florist wholesale pricing is **not a typed promo code at all** — it's a built-in pricing tier (`FLORIST_WHOLESALE_PRICING` in `src/phase2/constants.js`), computed directly server-side, gated by a real authenticated login session (`authStation`, JWT-based — confirmed via `server.js:101-108`), not a code entered at the public `/public` checkout.
+
+**This strongly suggests "WS + business name" in the checklist's own wording refers to a florist's login/account identifier (e.g. an account name or reference code shown in their portal), not a discount code typed anywhere** — a real, if understandable, mismatch between how Col described this item and how the system actually implements it.
+
+**Math verified with full, direct 100% certainty — using the real, actual production source code, not reimplemented math, and requiring no authentication or database writes to prove:** imported `FLORIST_WHOLESALE_PRICING` directly from the real `src/phase2/constants.js` module and computed the real discount percentage against the real retail prices: **Standard tier: $24.95 → $16.22 = 34.99% off. Premium Floral tier: $34.95 → $22.72 = 34.99% off.** Both resolve to 35% (the 0.01% variance is pure whole-cent rounding on the unit price, not a bug — confirmed via `deriveWholesaleUnitPriceCents()`'s own `Math.round()`). The source constant itself, `WHOLESALE_DISCOUNT_RATE`, is literally `0.35` — this is correct by construction, not approximated.
+
+**Could not test the actual authenticated purchase flow end-to-end** (logging in as a real florist and completing a real wholesale credit purchase) — found 5 real, pre-existing test florist accounts already in the database (including one Col created himself, `CDM FLORIST TEST 001`), but none of their passwords are known to this session, and creating a new florist login or resetting a password would be the same category of production write already blocked for Item 15. Did not attempt it.
+
+**Problem:** None found in the pricing math itself — it's correct, confirmed via the real source code. The item's literal wording ("code... takes X% off") doesn't match how this feature is actually built (a login-gated pricing tier, not a typed code), which may itself be worth clarifying with Col — but that's a description mismatch, not a functional bug.
+
+**Status:** 🟢 **pricing math confirmed 100% correct via direct verification of the real source code (not circumstantial this time — this is a pure, side-effect-free calculation, fully testable without authentication or writes).** End-to-end purchase flow (real login → real Stripe charge) not tested, since that needs real florist credentials this session doesn't have and won't create without authorization — same category of limit as Item 15, but the core number itself is proven correct with certainty, unlike Item 15.
+
+---
+
 ### ITEM 17 — "Launch override code works up to 50% off (TT50OFF – start here)"
 
 **Analysis:** TT50OFF was already built, tested, and pushed to production earlier this session (`new_changes.md` Step 10, plus a rounding fix and a Dec-31-2026 expiry added afterward). This item's real task per the checklist's own purpose — a fresh QA pass, not a rebuild — is independent re-verification against the *current* live state, confirmed with genuinely separate checks, not a re-paste of the earlier verification.
