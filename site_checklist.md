@@ -187,6 +187,16 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 ---
 
+**Re-verified fresh (2 Oct 2026), per "no chance of error" instruction — this time against the actual `/public` checkout page specifically, not just `landing.html`:** discovered `form-template.html` has its own **separate, independently-maintained copy** of this same detection logic (`detectCheckoutPricingCountry()`, `form-template.html:3671-3689`) — a faithful duplicate of `landing.html`'s version, not shared/imported code, meaning the two could in principle drift apart from each other over time without anyone noticing. Worth testing independently rather than assuming "already confirmed on landing.html" covers this page too.
+
+**First test attempt genuinely got this wrong — caught and corrected before reporting a false bug, worth recording the mistake and the fix:** initially checked the `#country` field (the *recipient's* country, used for keepsake content like local news/weather — a manually-set, unrelated field) and found it always stayed "New Zealand" regardless of timezone, which looked like a real bug. Investigated instead of reporting it: confirmed via code (`form-template.html:3710-3730`, `applyCheckoutPricingCountry()`) that auto-detection actually writes to a **different element**, `#checkout-country-select` (the pricing/currency-estimate selector in the purchase panel) — not `#country` at all. Re-ran the test against the correct element and got **all 6 real timezone cases + the fallback case correct**, matching `landing.html`'s behavior exactly: `Pacific/Auckland→NZ`, `Asia/Manila→Philippines`, `Europe/London→UK`, `America/Chicago→US`, `Australia/Melbourne→Australia`, `Asia/Dubai` (unmapped) → correctly falls back to New Zealand.
+
+**Worth flagging as a genuine, if minor, source-of-confusion finding (not a functional bug):** this page has two separately-named, same-sounding "country" concepts — `#country` (recipient's country, affects keepsake content) and `#checkout-country-select` (pricing-display country, affects only the NZD-to-local "estimate" shown). Both are real, both work correctly, but a future developer (or this session's own first test attempt) could easily conflate them, same way I initially did.
+
+**Status:** ✅ **re-confirmed correct, now independently verified on the actual checkout page too, not just landing.html — both implementations match, no drift found.** One test-script mistake made and corrected during this process, documented honestly rather than silently fixed.
+
+---
+
 ### ITEM 7 — "Changing the flag changes the price and currency"
 
 **Analysis:** Confirmed via live browser test driving the real `applyPricingCountry()` function: selecting each of the 5 flags correctly updates the displayed price and currency symbol on the landing page (`$9.95` → `£4.95` → `$6.95` → `$8.95` → `₱199` depending on selection, confirmed in earlier items' live tests). **This specific item is about what's shown, not what's charged** — read literally, the checklist item is satisfied: changing the flag does change the displayed price and currency symbol shown on the page.
