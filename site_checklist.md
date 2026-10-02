@@ -212,3 +212,20 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 **Status:** ✅ **done, verified 3 independent ways against live production data.** No bugs found, no code changes needed this pass — this item was already correctly completed by prior work in `new_changes.md` and holds up under fresh, skeptical re-testing.
 
 ---
+
+### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
+
+**Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
+
+**Analysis (code + asset investigation performed before acting):** The section shown is `public/landing.html:1096-1136` (`<section class="feature-section">`), whose current hero image is `public/feature_keepsake_desk.png` (confirmed via direct code read, `line 1133`). Checked for any recently-added image file that might be the "redone artwork" Col is referring to — found `public/feature (2).png`, but confirmed via file timestamp (`2 Sept 2026`, not today) that this is a pre-existing, unrelated file, not something freshly supplied with this message. **No new image file has actually been provided alongside this message** — the screenshot shows the current live page plus what appears to be a new keepsake *content* mockup (a sample generated newspaper, not necessarily a new hero photograph for this landing-page section specifically).
+
+**Problem:** Genuinely ambiguous what Col wants changed, and nothing to act on yet:
+1. Is "the artwork" a new photo/image file for the `hero-visual` section shown in the screenshot (meaning he intends to send an actual image file next)?
+2. Or is he referring to the sample keepsake *design/template* itself (the Philippines-themed mockup visible in the screenshot) — i.e. a change to how generated keepsakes look, not the landing page's static hero image?
+3. Or is this screenshot simply illustrating something else entirely (e.g. part of his broader status-check message, showing he's looked at the current live site) rather than a specific change request at all?
+
+**Solution:** Not building anything yet — this is a documentation-only step per the standing "write steps, don't implement" instruction, and separately, there's genuinely nothing concrete to implement until Col either (a) sends the actual new image file, or (b) clarifies which of the above he means.
+
+**Status:** 📝 **documented, blocked on clarification — needs Col to either attach the actual new artwork file, or clarify whether this is about the landing page's hero image or the keepsake template design itself.** Not guessed at.
+
+---
