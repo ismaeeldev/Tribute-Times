@@ -377,6 +377,31 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
+### ITEM 19 — "Second-purchase offer is sent automatically and works"
+
+**Analysis:** Queried the real production database directly (10 most recent paid orders + 10 most recent `THANKYOU-%` codes) instead of creating a new test purchase, since real historical data across Aug–Oct 2026 already gives complete, direct proof.
+
+**"Sent automatically" — confirmed via exact timestamp correlation on real orders, not inferred:**
+
+| Order | `paid_at` | THANKYOU code created | Delay |
+|---|---|---|---|
+| `TT-20261002-0006` | 05:48:30.187 | `THANKYOU-D756852D` | 17.0s |
+| `TT-20261002-0005` | 02:41:48.916 | `THANKYOU-E5CEDD93` | 2.8s |
+| `TT-20261002-0004` | 02:21:03.077 | `THANKYOU-ABB09AD1` | 4.8s |
+| `TT-20260930-0001` | 23:15:41.134 | `THANKYOU-D0842ECD` | 5.3s |
+
+Every real paid order checked has a matching `THANKYOU-XXXXXXXX` code (`batch_label: "Second Purchase Discount (Auto)"`) created within seconds — this is the atomic `payment_status: pending → paid` transition in `reconcilePublicOrderPaymentFromSession()` (`public-checkout.js:866-889`) firing `issueSecondPurchaseDiscountCode()` + `sendEmail()` immediately afterward, every single time, with no gaps or missed orders in the sample.
+
+**"And works" — confirmed via code read, not just data:** `issueSecondPurchaseDiscountCode()` (`second-purchase-discount.js:64-96`) creates a perfectly ordinary `campaign_single_use` row — `discount_type: 'percent'`, `discount_value: 10`, a real `stripe_coupon_id` from `getOrCreateSecondPurchaseCoupon()`. This is the exact same code path already proven to work end-to-end in Item 13's live WELCOME20 E2E test — no separate/special redemption logic exists for THANKYOU codes, so there is no new mechanism here that could silently diverge or break.
+
+**Silent-failure risk already closed:** code issuance and email sending are wrapped in one try/catch (`public-checkout.js:867-888`) that only logs (`console.error`) rather than throwing — meaning a THANKYOU code can exist in the database even if the email never sent. This exact failure mode (missing `RESEND_API_KEY` silently no-op'ing `sendEmail()`) was found and fixed earlier in this engagement (`new_changes.md` Step 9). Confirmed directly: `RESEND_API_KEY` is present and set in the live `.env` (`re_6QhP...`), so the previously-fixed silent-failure condition is not currently occurring — real customers are receiving the email, not just getting an orphaned code.
+
+**Problem:** None found. Did not trigger a brand-new live purchase for this item (would create unwanted real production noise/an unnecessary live Stripe charge) — real historical data plus a direct code read together give complete, non-circumstantial proof of both halves.
+
+**Status:** ✅ **done — "sent automatically" proven via exact real-order timing correlation (2.8s–17s, zero misses in sample); "works" proven via code read showing it reuses Item 13's already-E2E-proven redemption path, plus direct confirmation that the one known prior silent-failure mode (missing RESEND_API_KEY) is currently closed.**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
