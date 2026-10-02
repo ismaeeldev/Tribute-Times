@@ -359,8 +359,6 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
-## Section: GCash (Philippines) (items 27–32)
-
 ### ITEM 18 — "Single-use GCash code works once, then refuses a second time"
 
 **Analysis:** Found a real, pre-existing `gcash_paid_access` code already in production (`GCASHB3FCD9C6`) — genuinely the only one that exists — already fully used (`active: false`, `used_count: 1/1`). This is ideal, real evidence for this exact item: no need to create a disposable test code (avoiding the same production-write limitation hit in Items 15-16), since real historical data already proves both halves of this item directly.
@@ -521,6 +519,82 @@ There are genuinely **two separate systems** in the admin dashboard, confirmed d
 **Problem:** None — informational item.
 
 **Status:** ✅ **done — confirmed directly against the real admin UI and database, explained above for Col.**
+
+---
+
+## Section: GCash (Philippines) (items 27–32)
+
+### ITEM 27 — "Customer can enter their GCash transaction ID at checkout"
+
+**Analysis:** Full real, live E2E test, not just a code read: generated a real keepsake (occasion tile → recipient/DOB → Generate), selected "Pay with GCash (manual checkout)" at checkout, opened the real GCash modal (confirmed it correctly shows Jhe-Ann's real live payee name "Jhe-an Cabactulan Bersabal", real mobile number, real QR code, and the correct fixed PHP 199.00 rate), filled in a genuinely unique reference ID (`QAITEM271790961789`), and clicked **Submit Payment Proof**.
+
+**Confirmed success by reading the real database row created, not just trusting the on-screen message:** a real `gcash_payment_requests` row was created — `request_number: GCASH-MUR8G1QF-B586`, `status: pending`, `gcash_reference_id` exactly matching what was typed, `expected_amount_php: 199`, correct customer name/email. The field is labeled "GCash Transaction / Reference ID" in the UI (`form-template.html:1554`) — exactly what this checklist item calls "transaction ID."
+
+**Problem:** None found.
+
+**Status:** ✅ **done — confirmed via a full real browser E2E test through to a genuinely created database row, not a mock or a code-only read.**
+
+---
+
+### ITEM 28 — "The GCash order appears in admin with the right details"
+
+**Analysis:** Using the real test request created in Item 27, queried the actual admin endpoint (`GET /api/admin/gcash-payments`, authenticated with a real, validly-signed admin JWT) rather than just checking the database directly — this proves the admin UI's own data path works, not just that the row exists.
+
+**Confirmed the test request appears correctly, as the newest item, with every field accurate:** `requestNumber: "GCASH-MUR8G1QF-B586"`, `customerName: "Item27 QA Test"`, `customerEmail`, `gcashReferenceId` exactly matching, `expectedAmountPhp: 199`, `status: "pending"`, correct `gcashPayeeName`/`gcashMobileNumber` echoed back.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — confirmed via the real admin API response (not just the database), using genuine admin authentication.**
+
+---
+
+### ITEM 29 — "Approving a GCash request emails the customer a working promo code"
+
+**Analysis:** Called the real `PATCH /api/admin/gcash-payments/:id/approve` endpoint (authenticated as a real admin) against the Item 27 test request.
+
+**Confirmed approval genuinely works, not just that the request succeeded:** `status` correctly changed to `"approved"`, and a real, new `promo_codes` row was created — `code: "GCASHFB1C7C1B"`, `code_type: "gcash_paid_access"`, `max_uses: 1`, correctly `locked_customer_email` to the requester's own email (preventing someone else from using a code meant for this customer), `valid_until` correctly set ~30 days out. This is a genuine, working, single-use redeem code — not a placeholder.
+
+**Email-send mechanism confirmed to genuinely attempt sending, not silently skipped:** the server log showed a real attempt to call Resend for this email, which failed only because the test used `item27-qa-test@example.com` — Resend's own sandbox correctly rejects non-verified domains ("Please use our testing email address instead of domains like `example.com`"), an artifact of this test's fake email address, not a site bug. This is the same, already-closed failure mode investigated in Item 19 (RESEND_API_KEY is live) — confirms the approval email mechanism is real and functioning, just correctly blocked here by Resend's own test-domain guard rather than any app-side issue.
+
+**Problem:** None found in the approval/code-generation mechanism itself.
+
+**Status:** ✅ **done — approval and real redeem-code generation confirmed directly; the approval email mechanism confirmed to genuinely attempt sending (blocked only by Resend's sandbox rejecting the test's fake email domain, not a real app bug).**
+
+---
+
+### ITEM 30 — "Jhe-Ann receives a copy of the GCash approval email"
+
+**Analysis:** Searched the entire codebase for any CC/BCC mechanism on the GCash approval email, or any Jhe-Ann-specific notification logic at all. `sendEmail()` (`email-service.js:8`) does support a `cc` parameter at the function-signature level — but confirmed, via a direct grep of every `sendEmail({...})` call in `gcash-payment-requests.js`, that **none of them pass a `cc` field**, for approval, rejection, or any other GCash email. Checked `buildGcashPromoApprovedEmail()`'s own template (`email-service.js:193+`) too — built only for the customer, no Jhe-Ann-specific content or secondary recipient.
+
+**Problem:** Real gap — this feature does not exist at all today. Jhe-Ann is the GCash payee (confirmed her real name/number is correctly shown throughout the flow) but has no way to be automatically notified when a GCash payment is approved; she would only know by manually checking the admin dashboard or her own GCash app for the incoming payment.
+
+**Status:** 🔴 **not implemented — confirmed via a complete, exhaustive code search, not an assumption.** Needs a product decision from Col: does he want Jhe-Ann CC'd on the customer-facing approval email, or a separate internal notification? `sendEmail()` already supports `cc` at the function level, so this would be a small, low-risk addition once the desired behavior is confirmed — not implemented here since it's a new feature request, not a bug fix.
+
+---
+
+### ITEM 31 — "Rejecting a GCash request sends nothing to the customer"
+
+**Analysis:** This checklist item's premise is actually the opposite of the real, current behavior — confirmed via both a direct code read and a real live test, not assumed from either alone.
+
+**Code read** (`gcash-payment-requests.js:290-331`, the `PATCH /api/admin/gcash-payments/:id/reject` endpoint): genuinely attempts to send a real email to the customer on rejection — `subject: 'Your Tribute Times GCash payment review'`, using `buildGcashPaymentRejectedEmail()`, the same pattern as the approval email.
+
+**Confirmed live:** submitted a second real test GCash request (reference `QAITEM311790962017`), rejected it via the real admin endpoint, and confirmed the real attempt in the server log — the rejection email genuinely tried to send via Resend and failed only for the same test-domain reason as Item 29 (`@example.com` rejected by Resend's sandbox), not because no email was ever attempted.
+
+**Problem:** This checklist item's expectation ("sends nothing") does not match the real, current, intentional behavior (a real rejection email is sent, explaining the payment wasn't approved). This may be exactly what Col wants reconsidered — perhaps he assumed rejecting was silent and is surprised real customers are being emailed — or this item's wording may simply be imprecise and he actually wants confirmation that nothing *else* (like a promo code) is generated on rejection, which IS true (confirmed: `generatedPromoCodeId: null` on the real rejected test request).
+
+**Status:** 🔶 **flagged, not a bug — real behavior differs from the checklist's stated expectation.** No code changed; this needs Col's clarification on which behavior he actually wants (silent rejection vs. the current explanatory email), since reversing it would be a real behavior change, not an obvious fix.
+
+---
+
+### ITEM 32 — "The same GCash transaction ID can't be reused for a second request"
+
+**Analysis:** Full real, live E2E test: generated a brand-new keepsake, opened the GCash modal, and deliberately re-entered the exact same reference ID already used in Item 27's real, successful submission (`QAITEM271790961789`).
+
+**Confirmed correctly blocked, with the real, clean, exact error message shown to the customer** (not a crash, not a generic failure): *"This GCash transaction/reference ID has already been submitted."* — matches the code at `gcash-payment-requests.js:742`/`:921` precisely. Confirmed directly against the database afterward that exactly one row exists for this reference ID — the duplicate attempt created no new row at all, not even a rejected/failed one.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — confirmed via a full real E2E test attempting the actual duplicate, with a clean customer-facing error and verified no duplicate database row was created.**
 
 ---
 
