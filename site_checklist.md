@@ -735,6 +735,18 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 43 — "Sports stories match the actual date"
+
+**Analysis:** Confirmed via code read that the AI prompt explicitly requests this ("3-5 sport headline lines from different years, all on ${day}th ${monthName(month)}," `tribute-times-ai-prompt.js:94-95`), but found a real, genuine gap: **unlike the main news lead (`enforceExactYearLead()`, which actively verifies and reorders content server-side if the AI's returned year doesn't match), there is no equivalent server-side verification for sport entries at all.** The only real server-side enforcement on sport data is `enforceSportHasScore()` (`tribute-times-renderer.js:183-186`), which only checks the headline contains a digit (to catch vague unscored prose, a different, already-fixed bug from 18 Aug 2026) — it does not check the event's date/day-month against the keepsake's actual date in any way.
+
+**Tested live against a real generated keepsake:** confirmed the real output (`1982 — New Zealand Rugby: Counties defeat Waikato 18–12 in pre-season thriller (Rugby Park, Hamilton)` for a 20th March 1982 keepsake) is structurally well-formed (has a real score, a venue, a year) — but **could not independently verify this specific match genuinely happened on 20th March** specifically, since no external sports-record database is accessible from this environment to fact-check against. This is the real, honest limit of what's directly verifiable here.
+
+**Problem:** A real, confirmed structural gap — sport-date accuracy is entirely trusted to the AI's prompt compliance, with zero server-side verification, unlike the equivalent and already-solved problem for the main news lead. This is architecturally the same category of risk `enforceExactYearLead()` was built to close for news — sport just never got the same treatment.
+
+**Status:** 🔶 **cannot be fully verified — no server-side date-accuracy check exists for sport entries (confirmed gap via code read), and individual sport facts can't be independently fact-checked from this environment.** Flagged as a real structural gap worth closing with the same pattern as `enforceExactYearLead()`, not fixed here since it would need either a verified historical sports-data source (similar to how `market-index-data.js` already exists for financial figures) or, at minimum, trusting the AI less by adding a sanity check — a product/engineering decision, not an obvious one-line fix.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
