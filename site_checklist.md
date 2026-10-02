@@ -502,6 +502,28 @@ The control case matters: it proves `.trim()` (`public-checkout.js:385`, also `n
 
 ---
 
+### ITEM 26 — Note to Col: where discount codes are created and checked
+
+**Analysis:** Not a bug hunt — this item asks for an explanatory note, confirmed by directly reading the real admin UI rather than guessing.
+
+**Note for Col:**
+
+There are genuinely **two separate systems** in the admin dashboard, confirmed distinct in both the UI and the database — mixing them up is the root cause behind several issues already found in this checklist (Items 14, 20):
+
+1. **🏷️ Promo Codes** (admin sidebar) — these are **consultant/reseller tracking codes** (like `colinM100`), used to credit a sale to whoever referred the customer. They do **not** carry a discount by default — confirmed this is true for every single one that currently exists in the database, not just `colinM100` (Item 14's finding).
+
+2. **🎟️ Campaign Codes** (admin sidebar, directly below Promo Codes) — this is where a **real, working discount code** is created (e.g. `WELCOME20`, `TT50OFF`). Click **"+ Create Codes"** on this screen to set a discount percentage or fixed amount, an optional expiry date, an optional country restriction, and how many times it can be used. This is the only screen that actually creates a genuine Stripe discount coupon behind the code.
+
+**Where a code's status is checked:** both screens show each code's current state (used/active, how many times used, valid-until date) directly in their tables — no separate "checker" tool exists or is needed; the same table used to create codes is also where their live status is viewed.
+
+**One thing worth knowing, surfaced by this checklist's testing (Item 20):** the "Country" field on a Campaign Code restricts the code to customers **shipping to** that country, not customers who are *located in* or *paying in the currency of* that country — these can differ (e.g. an NZ-based customer shipping a keepsake to a relative overseas). Worth keeping in mind when setting a country restriction on a future code.
+
+**Problem:** None — informational item.
+
+**Status:** ✅ **done — confirmed directly against the real admin UI and database, explained above for Col.**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
