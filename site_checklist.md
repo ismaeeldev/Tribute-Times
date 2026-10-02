@@ -572,7 +572,7 @@ There are genuinely **two separate systems** in the admin dashboard, confirmed d
 
 ---
 
-### ITEM 31 — "Rejecting a GCash request sends nothing to the customer"
+### ITEM 31 — "Rejecting sends nothing and marks the order rejected"
 
 **Analysis:** This checklist item's premise is actually the opposite of the real, current behavior — confirmed via both a direct code read and a real live test, not assumed from either alone.
 
@@ -580,9 +580,11 @@ There are genuinely **two separate systems** in the admin dashboard, confirmed d
 
 **Confirmed live:** submitted a second real test GCash request (reference `QAITEM311790962017`), rejected it via the real admin endpoint, and confirmed the real attempt in the server log — the rejection email genuinely tried to send via Resend and failed only for the same test-domain reason as Item 29 (`@example.com` rejected by Resend's sandbox), not because no email was ever attempted.
 
-**Problem:** This checklist item's expectation ("sends nothing") does not match the real, current, intentional behavior (a real rejection email is sent, explaining the payment wasn't approved). This may be exactly what Col wants reconsidered — perhaps he assumed rejecting was silent and is surprised real customers are being emailed — or this item's wording may simply be imprecise and he actually wants confirmation that nothing *else* (like a promo code) is generated on rejection, which IS true (confirmed: `generatedPromoCodeId: null` on the real rejected test request).
+**Second half of this item — "marks the order rejected" — confirmed true:** the real test request's `status` correctly changed to `"rejected"` in the database, and confirmed no promo code was generated for it (`generatedPromoCodeId: null`) — the rejection-marking mechanism works exactly as intended.
 
-**Status:** 🔶 **flagged, not a bug — real behavior differs from the checklist's stated expectation.** No code changed; this needs Col's clarification on which behavior he actually wants (silent rejection vs. the current explanatory email), since reversing it would be a real behavior change, not an obvious fix.
+**Problem:** The first half of this item's expectation ("sends nothing") does not match the real, current, intentional behavior — a real rejection email is sent, explaining the payment wasn't approved. This may be exactly what Col wants reconsidered — perhaps he assumed rejecting was silent and is surprised real customers are being emailed — or this item's wording may simply be describing what SHOULD happen (a spec) rather than confirming current behavior already matches it.
+
+**Status:** 🔶 **half passes, half flagged — "marks the order rejected" confirmed correct; "sends nothing" does not match real behavior (a real email is sent).** No code changed; this needs Col's clarification on which behavior he actually wants (silent rejection vs. the current explanatory email), since reversing it would be a real behavior change, not an obvious fix.
 
 ---
 
