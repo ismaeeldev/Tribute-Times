@@ -229,3 +229,40 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 **Status:** 📝 **documented, blocked on clarification — needs Col to either attach the actual new artwork file, or clarify whether this is about the landing page's hero image or the keepsake template design itself.** Not guessed at.
 
 ---
+
+### ITEM 62 — 🚨 URGENT, LIVE: Col's wife actively trying to purchase right now, TT50OFF and CDMFREE both failed
+
+**Client message (verbatim, 2 Oct 2026):** *"I have my wife trying to buy one right now. The discount code TT50OFF and CDMFREE. Did NOT work!!"*
+
+**This is a real, live, active customer-facing failure — investigated immediately, ahead of the checklist queue, given the urgency.**
+
+**Analysis (real evidence, not guessed — found by reading actual order records from the live production database, matching exactly to this incident):**
+
+Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this is Col's wife — "Helen McCabe", recipient "Sophie Elizabeth McCabe") in the last few hours:
+- **3 "pending" orders**, each with `attribution_source: "promo_code"` and the note `"Attribution: promo code TT50OFF."` — confirming she typed `TT50OFF` specifically on these attempts, and the system correctly recognized/attributed the code. **All 3 have `stripe_checkout_session_id: null`** — the Stripe checkout session was never created, meaning the request failed somewhere after the pending order was saved but before Stripe was reached.
+- **1 "paid" order**, with no promo code at all (`attribution_source: "none"`) — she eventually gave up on the discount and paid full price ($9.95 NZD) via a real `cs_live_...` session.
+
+**Root cause, confirmed directly against the real Stripe account (not assumed):**
+
+1. Confirmed production genuinely runs Stripe's **live** mode key (verified: a real `cs_live_...` checkout session was successfully created using the account's actual live key).
+2. Re-tested the exact real `stripe.checkout.sessions.create()` call with the TT50OFF discount attached, using the live key — **it fails with Stripe's own explicit error**: *"No such coupon: 'ZhfCBNym'; a similar object exists in test mode, but a live mode key was used to make this request."*
+3. **This is a bug introduced by this session's own earlier work (Step 10, `new_changes.md`)** — when TT50OFF's Stripe coupon was created to support the card-payment path, it was created using a local `.env` that had Stripe's **test** key active at the time, not the live key. The coupon (`ZhfCBNym`) only ever existed in Stripe test mode. It was never actually usable on the real, live production site — this was missed because the earlier verification in Step 10 was also run against the test key, so it looked correct in testing but was never truly validated against live mode.
+4. **CDMFREE separately confirmed to not exist in the database at all** — unrelated to the TT50OFF bug, this one genuinely was never created (consistent with the Step 8 finding from earlier this session: Col was given instructions for creating it himself via the admin panel, but it was never actually set up by anyone).
+
+**Problem — this is serious and ongoing, not just a one-time incident:** every real customer who enters TT50OFF on the live site right now gets the exact same failure Helen did — a pending order gets created, then the request throws a genuine Stripe error and never reaches payment. This has presumably been broken since TT50OFF went live (1 Oct 2026) — **anyone who tried it before Helen likely hit the same wall**, worth checking order history for other abandoned `promo_code`-attributed pending orders.
+
+**🚨 Attempted an immediate fix, blocked by something only Col can resolve:** tried to create a genuine live-mode Stripe coupon directly and re-attach it to the TT50OFF code — **this failed too**: *"Permission denied... Enabling Coupons Write ('coupon_write') permissions on this key would allow this request to continue."* **The live Stripe API key configured on production is a restricted key that does not have permission to create or even read coupons at all.** This is not something fixable from code or from this session — it requires either:
+1. Col (or whoever manages the Stripe account) grants "Coupons Read" and "Coupons Write" permissions to the live API key currently configured on Render, via the Stripe Dashboard (link Stripe's own error provided: `https://dashboard.stripe.com/b/acct_1MHaIXA2imB14cWZ?destination=%2Fapikeys%2F...`), **or**
+2. A different, less-restricted live key is generated and swapped into Render's environment variables.
+
+**This also means something bigger than just TT50OFF:** since the whole server uses one single Stripe client/key for everything (confirmed via `server.js:31`), **the admin panel's own "+ Create Codes" feature (built in Step 8) is almost certainly also broken on the live site right now** for any percent/fixed-discount code — it calls the exact same `stripe.coupons.create()` that just failed with this permission error. This needs separately confirming, but the mechanism is identical.
+
+**Solution (cannot be completed without Col's action):**
+1. Col needs to fix the Stripe API key's permissions (or supply a different key) before any further discount-code work on the live site can be verified as genuinely working.
+2. Once a working live key is confirmed, re-create a proper live-mode coupon for TT50OFF and re-attach it (same process attempted above, just needs the permission fixed first).
+3. CDMFREE still needs creating from scratch regardless (separate, unrelated gap).
+4. Recommend checking order history for any other customers who hit this same TT50OFF failure before Helen — **checked directly: confirmed only Helen's 3 attempts exist, no other customer has tried TT50OFF since it went live on 1 Oct 2026.** This is contained to one family member's attempts, not a wider incident — some relief, though still needs fixing before the ad campaign drives real traffic.
+
+**Status:** 🚨 **root cause found and fully confirmed with real evidence (not guessed), but the actual fix is blocked on a Stripe Dashboard permission change only Col can make.** This needs to be relayed to Col immediately and directly, not left in this file alone, given the live urgency.
+
+---
