@@ -490,6 +490,18 @@ The control case matters: it proves `.trim()` (`public-checkout.js:385`, also `n
 
 ---
 
+### ITEM 25 — "The discounted price on screen matches what Stripe actually charges"
+
+**Analysis:** This item's literal premise doesn't apply the way it reads, for a typed promo code specifically — and that's by deliberate, already-documented design, not a bug. Read `updatePurchaseNote()` (`form-template.html:1855-1884`) closely: its own comment explains a prior client-reported bug (11 Aug 2026) where the on-screen total failed to reflect an active discount, and the fix taken was **not** to compute a typed promo code's discount amount client-side at all — "a manually-typed promo code is deliberately NOT folded into this total... rather than invent a number this can't verify, `validateCheckoutPromoCode()` gives a real valid/not-valid confirmation instead." The actual discounted amount for a typed code is only ever shown on Stripe's own page after redirect — already proven correct in Item 13's real live session (TT50OFF's 50% off showing correctly as an itemized Stripe line).
+
+**The one case that DOES show a computed discount on-screen before redirect is the separate viral-share 10% banner** (`activeReferralCode`, only ever set after a real server-confirmed check per the same code comment) — `total * 0.9` is hardcoded in the frontend (`form-template.html:1882`). Checked whether this hardcoded `0.9` actually matches the real Stripe coupon it's meant to represent (`STRIPE_VIRAL_SHARE_COUPON_ID` from `.env`, `public-checkout.js:101-102`) — retrieved the real, live Stripe coupon object directly: **`percent_off: 10`, confirmed exactly matching the frontend's `0.9` multiplier.** Currently correct, verified directly against Stripe's own data, not assumed.
+
+**Problem:** None found in current behavior — both halves verified correct. Flagging one real maintainability risk, not a live bug: the on-screen `0.9` and the actual Stripe coupon's `percent_off: 10` are two independently-maintained numbers with no automated link between them. If the coupon's percentage is ever changed directly in Stripe (or the `.env` var repointed to a different coupon) without also updating the hardcoded `0.9` in `form-template.html`, the on-screen "10% off" banner would silently show a stale, incorrect preview while the real Stripe charge used the new, correct percentage — the opposite of a customer being overcharged, but still a real accuracy gap between the preview and the charge, which is exactly what this checklist item is asking about.
+
+**Status:** ✅ **done — verified correct today for the only case where a discount amount is actually computed and shown pre-redirect** (the 10% viral-share banner, confirmed against the real live Stripe coupon). Typed promo codes deliberately show no computed discount pre-redirect by design (confirmed correct via Item 13's real Stripe session instead). 🔶 Noted the hardcoded-percentage drift risk for the viral-share banner specifically, as a maintainability flag rather than an active bug.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
