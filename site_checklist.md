@@ -72,7 +72,17 @@ For **every single item** on the 60-item list, in order (unless Col specifies a 
 
 **Solution (documented, not implemented):** this is a harder fix than the CSP issue — likely needs either (a) a `beforeunload`/`popstate` handler to intercept raw browser back-navigation while mid-checkout and redirect to a safe state instead of `about:blank`, or (b) relying on Stripe's own in-page Back link being the "supported" path and treating the fix as lower priority since Stripe's UI already provides a working, visible way to go back that doesn't have this problem. Needs Col's input on priority given this is a secondary path (most users click Stripe's own Back link, not their browser's), not guessed at or built here.
 
-**Status:** ✅ **"shows NZ$9.95 and completes" — fully confirmed true, genuine E2E pass with a real Stripe test payment, plus 4 redirect-logic edge cases tested exhaustively.** 🔴 **Two real bugs found this pass: (1) the font-loading CSP issue, (2) the browser-back-button-loses-everything issue.** Both documented, neither fixed yet, per standing instruction.
+---
+
+**Dedicated UI/Playwright test across 3 real viewports (desktop 1280px, tablet 768px, mobile 390px/iPhone-sized), full flow at each:**
+
+Ran the complete occasion-select → form-fill → generate → checkout flow at all 3 sizes, checking specifically for layout bugs (not just functional correctness, already covered above): element bounding boxes measured directly (not eyeballed) to confirm nothing overflows the viewport width, the occasion-tile grid correctly reflows to 2 columns on mobile (confirmed via screenshot — clean, nothing clipped or overlapping), the "Pay by Card" button stays fully clickable and within-viewport at every size, and the same CSP font-loading errors already documented above appear consistently at all 3 sizes (not a viewport-specific issue, confirms it's a page-wide problem, not something that only shows up on one device size).
+
+**One screenshot initially looked like it showed a real bug — investigated and ruled out as a false positive, worth recording why rather than silently discarding it:** the mobile checkout screenshot appeared to show a floating "Online" status badge overlapping the Customer Email field. Checked directly against the actual page source (`public/form-template.html`) and all other site pages — **the string "Online" does not appear anywhere in this codebase's HTML at all**, and there are no third-party widgets/iframes/scripts that could inject such an element. Confirmed this is an artifact of the local testing/screenshot tooling itself, not a real element rendered by `tributetimes.co.nz` — not reported as a site bug, since it isn't one. Flagged here explicitly so it's clear this was checked and ruled out, not missed.
+
+**No new real UI/layout bugs found in this dedicated viewport pass** — the 2 bugs already documented above (CSP fonts, browser-back-button) remain the only confirmed issues for this item.
+
+**Status:** ✅ **"shows NZ$9.95 and completes" — fully confirmed true, genuine E2E pass with a real Stripe test payment, 4 redirect-logic edge cases tested exhaustively, and a dedicated 3-viewport UI/Playwright pass completed.** 🔴 **Two real bugs found total this item: (1) the font-loading CSP issue, (2) the browser-back-button-loses-everything issue.** Both documented, neither fixed yet, per standing instruction. **Item 1 is now fully complete** — moving to Item 2 next with the same rigor.
 
 ---
 
