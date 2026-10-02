@@ -439,6 +439,25 @@ Also directly confirmed the check is correctly case-insensitive (`new zealand` l
 
 ---
 
+### ITEM 22 — "Codes still work with accidental extra spaces"
+
+**Analysis:** Tested whitespace handling as its own dedicated set of edge cases against the real `TT50OFF` code via the live `/api/public/promo/validate` endpoint (same real redemption function as Item 21, `resolveCampaignPromoCode()`), deliberately distinct from the case-insensitivity tests so a space-only failure mode wouldn't be masked:
+
+- Leading spaces (`"   TT50OFF"`) → `{"valid":true}`
+- Trailing spaces (`"TT50OFF   "`) → `{"valid":true}`
+- Tab characters (`"\tTT50OFF\t"`) → `{"valid":true}`
+- **Control case — internal space (`"TT50 OFF"`, a genuinely different string)** → `{"valid":false}`, correctly rejected
+
+The control case matters: it proves `.trim()` (`public-checkout.js:385`, also `normalizePromoCode()` in `attribution.js:17-19` for the GCash path) is only stripping edge whitespace, not silently collapsing all whitespace everywhere — a real typo that changes the code (like an accidental space in the middle) is still correctly caught as invalid, not falsely accepted.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — edge-whitespace trimming confirmed correct via live HTTP test against the real redemption function, including a control case proving internal-whitespace typos are still correctly rejected, not silently over-forgiven.**
+
+---
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
