@@ -193,7 +193,9 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Worth flagging as a genuine, if minor, source-of-confusion finding (not a functional bug):** this page has two separately-named, same-sounding "country" concepts — `#country` (recipient's country, affects keepsake content) and `#checkout-country-select` (pricing-display country, affects only the NZD-to-local "estimate" shown). Both are real, both work correctly, but a future developer (or this session's own first test attempt) could easily conflate them, same way I initially did.
 
-**Status:** ✅ **re-confirmed correct, now independently verified on the actual checkout page too, not just landing.html — both implementations match, no drift found.** One test-script mistake made and corrected during this process, documented honestly rather than silently fixed.
+**Visual/UI confirmation (desktop + mobile), completing the field-level check above with what the customer actually sees rendered:** real browser screenshots with UK timezone emulated, confirmed correctly on both viewports — UK flag icon auto-selected in the price panel, **"≈ £4.95" shown clearly alongside "NZ$9.95"** on all 3 product tiers (Digital/Standard/Premium), and the final checkout summary line correctly reads *"Total today: NZ$9.95 (≈ £4.95)."* Mobile layout confirmed clean, no overlap, fully legible, consistent with desktop. No redirect-logic applies to this item (no payment flow involved — this is a pure detection/display feature) — confirmed that's a correct exclusion, not a skipped check.
+
+**Status:** ✅ **fully complete — field-level logic, visual rendering on desktop and mobile, all independently re-verified on the actual checkout page.** No bugs found. One test-script mistake made and corrected during the process, documented honestly rather than silently fixed.
 
 ---
 
