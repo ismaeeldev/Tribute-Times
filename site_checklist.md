@@ -266,3 +266,22 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 **Status:** 🚨 **PENDING — root cause found and fully confirmed with real evidence, nothing implemented.** Blocked on a Stripe Dashboard permission change only Col (or whoever controls that account) can make. Relayed to Col directly given the live urgency; tracked here as pending until the permission is fixed and the actual coupon fix can be built and tested.
 
 ---
+
+### ITEM 63 — Col: "Explain what this information is and how I use it??" (Dashboard Overview screenshot)
+
+**Client message (2 Oct 2026):** Screenshot of the admin dashboard home screen (mobile), showing: Total/Pending/Printed/Posted/Delivered order-status tiles (1/0/0/1/0), and an "Attribution Summary (This Month)" block with Free Demos: 0, Paid Sales: 17, Paid Total: NZ$244.15, Unattributed: 16. Question, not a bug report: *"Explain what this information is and how I use it??"*
+
+**This is a question, not an implementation request — no code change made, per instruction. Not a "not yet implemented" item in the usual sense (there's nothing to build), just answered and logged here for the record.**
+
+**Answer, confirmed by reading the actual calculation code (`src/phase2/admin-fulfilment.js:2894-2922`, `buildAttributionReport()`), not guessed:**
+- **Total/Pending/Printed/Posted/Delivered** (top tiles): physical-order fulfilment status counts — how many orders exist, and where each one is in the print → post → deliver pipeline. Only counts orders needing physical fulfilment.
+- **Free Demos**: how many free demo keepsakes have been generated **this calendar month** (resets on the 1st) — ties to a consultant's monthly free-demo allowance.
+- **Paid Sales**: count of paid orders **this calendar month**.
+- **Paid Total**: the sum of `total_amount_nzd` across those paid orders — confirmed this is **always in NZD regardless of what currency a customer saw** (directly connects to the cross-cutting currency-mismatch finding from Items 2-4/8 — this total is accurate to what Stripe actually charged, not necessarily what the customer believed they were paying).
+- **Unattributed**: paid orders with no `sales_consultant_id` set — i.e. sales that didn't come through any agent/reseller code, direct/organic sales. 16 of 17 sales this month being unattributed means only 1 sale this month is credited to an agent.
+
+**How to use it:** a quick monthly pulse check — how many sales, how much revenue (in NZD), and how much of that came through agents vs. organically. Scrolling down from this same screen (per the screenshot's own next visible heading, "Agent Attribution Report") breaks the same numbers down per individual agent.
+
+**Status:** ✅ **answered directly, no code change, logged for the record.**
+
+---
