@@ -80,15 +80,74 @@ This needs Col's decision before either path is built — flagged as its own cro
 
 ---
 
-### 🔴 CROSS-CUTTING FINDING — Displayed price vs. actual Stripe charge mismatch (affects Items 2, 3, 4, 7, 8)
+### 🔴 CROSS-CUTTING FINDING — Displayed price vs. actual Stripe charge mismatch (affects Items 2, 3, 4, 5 [card path only], 7, 8)
 
-**This is one real underlying bug surfacing across 5 separate checklist items — documented once here in full, referenced (not re-explained) from each affected item above/below, per the instruction to keep items separate but flag genuine shared causes rather than duplicate the same investigation 5 times.**
+**This is one real underlying bug surfacing across multiple checklist items — documented once here in full, referenced (not re-explained) from each affected item above/below, per the instruction to keep items separate but flag genuine shared causes rather than duplicate the same investigation 6 times.**
 
 **Root cause:** `src/phase2/public-checkout.js`'s `buildLineItems()` (lines 666-694) and the Stripe Checkout Session creation (lines 93-98) use a single hardcoded `currency: 'nzd'` and the NZD-denominated `tier.priceCents` from `src/phase2/constants.js`, with no reference anywhere to the customer's selected country. The landing page's per-country price display (`COUNTRY_PRICING` in `public/landing.html`, driving Items 1-4 and 7's "changing the flag changes the price" check) is a **purely cosmetic label** with zero connection to what Stripe actually charges — confirmed by grepping the entire `src/phase2/` directory for any currency-by-country logic (zero matches) and by creating real, live Stripe test-mode Checkout Sessions and inspecting their actual recorded `currency`/`amount_total` via Stripe's own API (not just reading the request code) for all 4 currencies.
 
 **Net effect:** every customer who isn't in New Zealand sees a price on the page that is not the price they will actually be charged, with no warning or disclaimer anywhere in the flow. This is the single most significant finding so far in this checklist — it affects real money and real customer trust, not just cosmetics.
 
 **Needs Col's decision, not a unilateral fix**, since the two resolution paths (show the real NZD price everywhere vs. build real multi-currency Stripe charging) have very different scope, cost, and effect on what the site visually promises. Flagged to Col as its own item — see end-of-session summary.
+
+---
+
+### ITEM 5 — "Philippines purchase shows ₱199 and completes"
+
+**Analysis:** Philippines is genuinely different from Items 2-4 because it has two separate purchase paths, confirmed via code (this session's own Step 10 work in `new_changes.md`, re-verified fresh here) and a live test:
+- **GCash path** (`public/form-template.html`'s `openGcashModal()`, `src/phase2/gcash-payment-requests.js`): hardcodes `fixedPhp = 199` — confirmed this is a real, standalone PHP amount, never converted through Stripe/NZD at all. **This path is correct — ₱199 shown is ₱199 actually required for payment.**
+- **Card/Stripe path** (if a Philippines customer chooses "card" instead of GCash): confirmed via a live Stripe test-mode session, created and retrieved via Stripe's own API, that selecting Philippines and paying by card results in the exact same bug as Items 2-4 — the landing/checkout page shows ₱199, but **Stripe will actually charge 9.95 NZD**, not ₱199.
+
+**Problem:** Item 5 is correct for the GCash path, and affected by the same cross-cutting currency-mismatch bug for the card path. This item is a genuine partial-pass: "shows ₱199" is true in both paths' displays, but "completes" at the shown price is only true via GCash.
+
+**Status:** 🟡 **partially correct — GCash path confirmed working exactly as described; card path shares the cross-cutting NZD-charge bug documented above.** Needs no separate fix beyond whatever Col decides for the cross-cutting finding — GCash itself needs no changes for this item.
+
+---
+
+### ITEM 6 — "Site picks the right country automatically"
+
+**Analysis:** Confirmed via direct code read (`public/landing.html:1311-1334`, `detectPricingCountry()`) and a real, live browser test across 7 different simulated timezones (not just reading the mapping table and assuming it works) — the site uses the browser's own timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`), not IP geolocation, deliberately (there's an existing code comment explaining this is because the site's Content-Security-Policy only allows network calls back to itself, and loosening that site-wide just for this display feature wasn't judged worth it — a reasonable, already-considered trade-off, not an oversight).
+
+**Live test results, all correct:**
+- `Pacific/Auckland` → New Zealand ✓
+- `Asia/Manila` → Philippines ✓
+- `Europe/London` → United Kingdom ✓
+- `America/New_York` → United States ✓ (matches via a `startsWith('America/')` catch-all, confirmed this also correctly covers other US timezones like `America/Los_Angeles`, `America/Chicago`, etc., not just New York specifically)
+- `Australia/Sydney` → Australia ✓
+- `Asia/Tokyo` (no mapping exists for this timezone) → correctly falls back to New Zealand (`DEFAULT_PRICING_COUNTRY`), not a crash or blank state ✓
+- `Europe/Berlin` (no mapping exists) → correctly falls back to New Zealand ✓
+
+**Problem:** None found. A traveler or VPN user could get a "wrong" detection (e.g. someone physically in Germany but who's never been to NZ sees NZ pricing by default) — but this is an inherent, already-documented limitation of timezone-based detection, not a bug, and the manual flag selector sits right next to it as an equally-valid way to correct it, per the existing code comment.
+
+**Status:** ✅ **done — confirmed correct across 6 real timezone scenarios plus 2 fallback-path scenarios, live-tested in a real browser, not just read from code.**
+
+---
+
+### ITEM 7 — "Changing the flag changes the price and currency"
+
+**Analysis:** Confirmed via live browser test driving the real `applyPricingCountry()` function: selecting each of the 5 flags correctly updates the displayed price and currency symbol on the landing page (`$9.95` → `£4.95` → `$6.95` → `$8.95` → `₱199` depending on selection, confirmed in earlier items' live tests). **This specific item is about what's shown, not what's charged** — read literally, the checklist item is satisfied: changing the flag does change the displayed price and currency symbol shown on the page.
+
+**Problem:** None, read literally — but this is the same underlying situation as the cross-cutting finding: the price *display* correctly changes, it's the *actual charge* for 3 of the 5 currencies that doesn't follow it. Not re-explained in full here since it's the same root cause already documented above.
+
+**Status:** ✅ **done as literally described** (display changes correctly on flag change) — **cross-referenced to the cross-cutting finding** for the related, deeper issue (display changing ≠ charge changing) rather than duplicating that finding a third time.
+
+---
+
+### ITEM 8 — "Same price shows on landing page, checkout and Stripe"
+
+**Analysis:** This is the one item that directly names all 3 stages (landing page, checkout, Stripe) — worth checking each link in that chain individually rather than assuming.
+1. **Landing page → checkout page:** confirmed via code read: the checkout page's own currency-display table (`CHECKOUT_FX` in `public/form-template.html:1594-1599`) is explicitly derived from "the already-approved landing-page local prices... not a separately invented exchange rate," per its own code comment — confirmed via a live browser test that selecting United Kingdom shows `£4.95` on the landing page, matching what the same investigation found the checkout page is built to show. **This link in the chain is correct.**
+2. **Checkout page → Stripe:** confirmed via the same live Stripe test-mode session testing used for Items 2-5 — this is the broken link. Checkout page shows (for example) `£4.95`, but Stripe actually records/charges `9.95 NZD`.
+
+**Problem:** This item is the most direct, precise statement of the cross-cutting bug on the whole checklist — it specifically asks whether landing/checkout/Stripe all agree, and the honest answer is: landing and checkout agree with each other, but neither agrees with what Stripe actually charges, for 3 of 5 currencies (UK, US, AU — NZ matches by coincidence since it's the actual backing currency; Philippines is correct only via GCash).
+
+**Status:** 🔴 **fails as described, for the same cross-cutting reason documented above** — landing page and checkout page are consistent with each other, but not with Stripe's real charge for AU/UK/US (NZ and PH-via-GCash are fine).
+
+---
+
+### ITEM 9 — "Stripe page shows TRIBUTE TIMES as the business name"
+
+**Status:** 📝 not yet investigated — next item in order.
 
 ---
 
