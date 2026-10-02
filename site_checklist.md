@@ -147,7 +147,49 @@ This needs Col's decision before either path is built — flagged as its own cro
 
 ### ITEM 9 — "Stripe page shows TRIBUTE TIMES as the business name"
 
-**Status:** 📝 not yet investigated — next item in order.
+**Analysis:** Confirmed via a real, live Stripe test-mode Checkout Session loaded in an actual browser (not just reading account settings via the API) — the real Stripe-hosted Checkout page genuinely displays **"TRIBUTE TIMES"** at the top, with a "Sandbox" badge confirming test mode is correctly isolated from production. This is controlled entirely by the Stripe account's own dashboard settings, not by anything in this codebase — confirmed via the Stripe API that `business_profile.name` is unset, but `settings.dashboard.display_name` is `"TRIBUTE TIMES"`, and visually confirmed this is in fact what the real Checkout page uses.
+
+**Interesting, unrelated observation worth flagging (not a bug in this item):** the live Checkout page also offers "Choose currency: PKR 1,608.12 / NZ$9.95" — Stripe's own built-in GeoIP-based currency-presentment feature, completely independent of and unaware of this site's own country-selector logic. This isn't part of item 9's scope, but is directly relevant context for the cross-cutting currency finding above — it shows Stripe already has native multi-currency display capability that this codebase isn't using or coordinating with.
+
+**Problem:** None found for this item specifically.
+
+**Status:** ✅ **done — confirmed via a real, live Stripe Checkout page, not just account settings.**
+
+---
+
+### ITEM 10 — "A declined card shows a clear message and sends nothing"
+
+**Analysis:** Tested with a real Stripe-documented test decline card (`4000000000000002`), filled into an actual live Stripe Checkout page in a real browser and submitted for real (test-mode, no real money). Confirmed visually via screenshot: the page displays a clear, specific error directly below the card field — **"Your credit card was declined. Try paying with a debit card instead."** — not a generic/confusing message, and not a silent failure.
+
+Confirmed "sends nothing" via the order-status logic (`resolvePublicOrderStatus`/`reconcilePublicOrderPaymentFromSession` in `src/phase2/public-checkout.js:742-790`): an order is only ever marked paid by the server independently querying Stripe's own `session.payment_status` — there is no code path where a declined/failed payment attempt could mark an order as paid, confirmed by the same logic verified for Item 11 below.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — confirmed with a real decline, in a real browser, screenshotted.**
+
+---
+
+### ITEM 11 — "Going back or closing the payment page doesn't create a paid order"
+
+**Analysis:** Confirmed via real Stripe API tests, not just code reading: created a real test-mode Checkout Session and confirmed its initial state is `payment_status: unpaid`, `status: open` — never pre-marked paid. Then simulated "customer closes/abandons the page" by expiring that same session via Stripe's own API (the real-world equivalent of a session timing out from inactivity) and confirmed it transitions to `status: expired`, `payment_status: unpaid` — **never transitions to paid on its own.**
+
+Confirmed via code (`src/phase2/public-checkout.js:742-764`, `resolvePublicOrderStatus`) that the only way an order's `payment_status` ever becomes `paid` server-side is by this server independently calling Stripe's API and checking `session.payment_status === 'paid'` — there is no client-side "mark as paid" endpoint or trust boundary a customer closing/navigating away could exploit, by design. An abandoned session is handled explicitly: if `session.status === 'expired'`, the order is marked `cancelled`, not left in limbo or silently paid.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — confirmed via real Stripe API session lifecycle testing (create → confirm unpaid → expire → confirm still unpaid), and via code read confirming the server never trusts a client-asserted payment status.**
+
+---
+
+### ITEM 12 — "Each order shows in admin with the right amount and currency"
+
+**Analysis:** Checked thoroughly for any admin screen showing a general sales/orders list with amount and currency per order — not assumed one exists. Found `GET /api/admin/orders` (`src/phase2/admin-fulfilment.js:249-298`), which backs the only orders-related admin view (`public/admin.html`'s fulfilment queue). Read its exact `.select()` field list directly: it explicitly selects `id, order_number, source_portal, customer_name, customer_email, recipient_name, product_tier, delivery_option, queue_status, delivery_priority, needs_fulfilment, payment_status, created_at`, shipping fields, and keepsake data — **`total_amount_nzd` and `currency_code` are not in this list at all.** Also confirmed this endpoint filters to `.eq('needs_fulfilment', true)` — meaning it only shows orders needing physical printing/posting, excluding digital-only orders entirely (the majority of orders, per this session's own earlier findings about the site being "digital-only" currently).
+
+Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin endpoint resembling a sales list, revenue report, or orders-with-amount view — **none exists.**
+
+**Problem:** Item 12 genuinely fails as stated. There is no admin screen anywhere in the current codebase that shows "each order... with the right amount and currency" — not a wrong-amount bug, but a missing feature: the data (`total_amount_nzd`, `currency_code`) is correctly stored on every order at creation time (confirmed via `src/phase2/public-checkout.js:637-640`), it's just never surfaced in any admin view, and the one orders-related screen that exists is scoped to fulfilment status only, and only for physical (non-digital) orders.
+
+**Status:** 🔴 **fails — real gap found, not a display bug but a missing capability.** This is a genuine "Col needs this and it doesn't exist yet" finding, not something a small fix resolves — needs scoping as its own piece of work (e.g. a proper orders/sales list screen showing amount + currency per order, covering both digital and physical orders) rather than guessed at or built unilaterally here, per the "document only, don't implement" instruction.
 
 ---
 
