@@ -205,7 +205,11 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** None, read literally — but this is the same underlying situation as the cross-cutting finding: the price *display* correctly changes, it's the *actual charge* for 3 of the 5 currencies that doesn't follow it. Not re-explained in full here since it's the same root cause already documented above.
 
-**Status:** ✅ **done as literally described** (display changes correctly on flag change) — **cross-referenced to the cross-cutting finding** for the related, deeper issue (display changing ≠ charge changing) rather than duplicating that finding a third time.
+**Re-verified fresh (2 Oct 2026) on the actual `/public` checkout page specifically, not just landing.html, per the same "don't assume, test independently" lesson from Item 6** — real browser automation, clicking the actual flag dropdown UI (not just calling the underlying JS function): clicked the real `#checkout-country-btn`, selected "United Kingdom" from the real dropdown list, confirmed the checkout summary live-updated to **"Total today: NZ$9.95 (≈ £4.95)"**, matching exactly what calling `applyCheckoutPricingCountry()` directly also produces — confirming the real click-driven UI path and the underlying function are consistent with each other.
+
+**One test-script mistake made and caught during this process, worth recording honestly:** an initial automated test used a flawed regex (`/Selected option:.*?\./`, non-greedy) that stopped matching at the first period in "Selected option: Digital." — cutting off the sentence before the actual price text, making it look like all 5 currencies failed to update. Investigated before reporting any of that as real bugs: confirmed via a more careful debug script, both the direct function call and the real dropdown click correctly update the price every time. This was 100% a test-script defect, not a site bug.
+
+**Status:** ✅ **done — confirmed on both landing.html AND the actual checkout page, via both direct function calls and the real clickable dropdown UI.** No bugs found. Still cross-referenced to the cross-cutting finding for the separate, deeper display-vs-charge issue, not duplicated here.
 
 ---
 
