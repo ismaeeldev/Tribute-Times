@@ -359,6 +359,24 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
+## Section: GCash (Philippines) (items 27–32)
+
+### ITEM 18 — "Single-use GCash code works once, then refuses a second time"
+
+**Analysis:** Found a real, pre-existing `gcash_paid_access` code already in production (`GCASHB3FCD9C6`) — genuinely the only one that exists — already fully used (`active: false`, `used_count: 1/1`). This is ideal, real evidence for this exact item: no need to create a disposable test code (avoiding the same production-write limitation hit in Items 15-16), since real historical data already proves both halves of this item directly.
+
+**"Works once" — confirmed via real historical data, not assumed:** looked up the actual order this code was used for (`used_order_id` on the code row) — `TT-20260811-0005`, `payment_status: paid`, created 11 Aug 2026. This is a real, genuinely completed paid order, proving the code successfully worked on its first (and only) use.
+
+**"Refuses a second time" — confirmed via a full live E2E test, entering this exact already-used code at checkout right now:** generated a real keepsake, entered `GCASHB3FCD9C6` in the promo code field, confirmed the Pay button correctly relabeled to **"Redeem GCash Code"** (confirming the frontend correctly recognized the `GCASH...` format via `isGeneratedGcashPromoCode()`), clicked it, and confirmed — screenshotted — the exact real error: **"This GCash promo code has already been used or is inactive."** No false redirect, no accidental unlock (SAMPLE watermark still correctly showing), clean and clear.
+
+**Confirmed via code read exactly why this works correctly** (`validateGcashPaidPromoForPayload()`, `gcash-payment-requests.js:1366-1392`): checks `!promo.active` first (true for this code) and throws immediately with the exact message shown — matches the live test precisely, not a coincidence.
+
+**Problem:** None found.
+
+**Status:** ✅ **done — both halves proven true with real evidence: a real historical paid order for the first use, and a real live E2E test (screenshotted) for the correctly-refused second attempt.** No test code needed to be created; real production data already provided complete, direct proof.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
