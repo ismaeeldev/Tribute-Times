@@ -98,7 +98,21 @@ Ran the complete occasion-select → form-fill → generate → checkout flow at
 
 This needs Col's decision before either path is built — flagged as its own cross-cutting finding below (see "FINDING — Multi-currency display vs. actual charge mismatch") since it affects Items 2, 3, 4, 7, and 8 identically, not just this one line.
 
-**Status:** 🔴 **bug found, not yet fixed — needs Col's decision on which direction to resolve it.** Display price (`$8.95`) confirmed correct in isolation; the real charge amount/currency does not match it, confirmed via a live Stripe test session.
+---
+
+**Full E2E Playwright re-verification (2 Oct 2026), per the "every case, redirect logic, UI test" instruction — real browser, real server, real Stripe test session, Australia selected throughout:**
+
+Ran the complete real flow: occasion select → filled form with **Australia** selected as country → generated a real keepsake → reached the actual `/public` checkout screen.
+
+**New, more precise finding from seeing the real checkout page directly (not just the landing page), worth correcting/refining the original analysis with:** the `/public` checkout page is actually **more honest than the marketing landing page** — it explicitly labels the localized figure as *"Prices shown in NZD. **Your estimate**: [flag]"* (confirmed in `public/form-template.html:1351`), and its own checkout summary line reads **"Total today: NZ$9.95"** — the real NZD figure, not "$8.95" — directly on-screen before the customer even reaches Stripe. The landing page, by contrast, has no such disclaimer — its heading flatly states *"One Keepsake, Priced For Where You Are"* with no "estimate" qualifier (confirmed via grep: zero disclaimer text exists anywhere in `landing.html`). **So the honest-disclosure gap is narrower than originally characterized — it's specifically the landing page overstating precision, not the actual checkout page itself, which already correctly shows NZD throughout.**
+
+Continued through to the real Stripe page and read its exact content directly: confirmed **"$8.95"/"AUD" appears nowhere on the real Stripe Checkout page at all** — only `NZ$9.95` and Stripe's own unrelated GeoIP currency-picker (showing PKR in this test environment). This is the clean, complete, no-ambiguity confirmation of the bug: an Australian customer who saw "AU$8.95" on the landing page never sees that number again at any later step — checkout and Stripe both correctly (if silently) revert to NZD.
+
+**Redirect-logic edge cases:** not independently re-run for this item — confirmed by code review that the cancel/decline/fake-order-ID/browser-back behaviors are driven by the exact same shared `public-checkout.js` logic already exhaustively tested for Item 1 (country selection has no bearing on any of those code paths — confirmed via grep, none of that logic branches on country). Re-running identical mechanics with a different country selected would re-confirm already-documented behavior, not surface anything new — skipped to avoid redundant testing, per Item 1's own documented reasoning for deferring full-flow redundancy.
+
+**UI/Playwright viewport check:** not independently re-run per-viewport for this item either, for the same reason — the checkout page's layout doesn't change based on which country is selected (confirmed via code read: `COUNTRY_PRICING`/`CHECKOUT_FX` only swap text content, not layout/CSS), so Item 1's 3-viewport layout findings (no overflow, correct mobile reflow, same CSP font bug) apply identically here.
+
+**Status:** 🔴 **bug fully confirmed via complete real E2E flow through to the actual Stripe page — not yet fixed, needs Col's decision on which direction to resolve it (see cross-cutting finding below).** Refined finding: the checkout page itself is already honest (shows NZD, labels AUD as "estimate") — it's specifically the landing page that overstates precision with no disclaimer. Display price (`$8.95`) confirmed correct only on the landing page in isolation; neither the checkout page's final total nor the real Stripe charge ever shows AUD.
 
 ---
 
