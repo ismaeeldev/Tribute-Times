@@ -295,6 +295,22 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ---
 
+### ITEM 14 — "Reseller code (e.g. colinM) takes 20% off and credits the reseller"
+
+**Analysis:** This item is a direct re-statement of the exact issue already fully root-caused in `colinM100`'s real-world failure (Item 66 in `new_changes.md`, confirmed live by Col himself) — tested here with full fresh rigor rather than just citing the prior finding.
+
+**Checked the real production database first** — no exact `colinM` code exists, but `colinM100` does (clearly the real code the checklist's `colinM` example refers to, same one from Item 66): `code_type: consultant_demo`, `discount_type: null`, `discount_value: null`, `consultant_id` correctly set. Checked **every** real `consultant_demo` code in production (not just this one) to see if this is a one-off or systemic: **all of them** — `TOASTTESTSUCCESS`, `TOASTTESTSUCCESS2/3`, `LIVEVERIFYSUCCESS`, `RCARMELLAZ20` (note the "20" in the name, strongly implying an intended 20%-off code that was never actually built as one) — have `discount_type: null, discount_value: null`. **This confirms the gap is systemic across every reseller code in the database, not specific to `colinM100`.** Confirmed via grep that `consultant_demo` is never referenced anywhere in the checkout/discount-resolution code (`public-checkout.js`, `attribution.js`) — structurally, this code type cannot carry a discount, by design, the exact same finding as Item 66.
+
+**Full real E2E test performed** (not just reading the database): entered `colinM100` at checkout, generated a real keepsake, clicked Pay, followed through to the actual Stripe Checkout page, and read its real content directly — confirmed **`NZ$9.95` (full price), no discount line, no "% off" text anywhere.** This is a live, decisive confirmation matching exactly what Col experienced and reported in Item 66, not a re-guess from the database alone.
+
+**Crediting half independently verified as genuinely correct**, using the real order Col's own test purchase created (`TT-20261002-0005`, from Item 66's investigation): confirmed `sales_consultant_id` correctly links to "Colin McCabe" with `commission_rate: 100`, proving the attribution/crediting mechanism works exactly as intended — this part of the item is genuinely true.
+
+**Problem:** Same root cause as Item 66, now confirmed systemic across every reseller code in the database, not an isolated incident. "Takes 20% off" is false for every reseller code that exists — the `consultant_demo` code type has no discount capability at all, by design. "Credits the reseller" is true and independently re-confirmed here with fresh evidence.
+
+**Status:** 🔴 **fails exactly as described — confirmed via a fresh, full, real E2E test (not just citing Item 66), and confirmed this is systemic across every reseller code in production, not a one-off.** Same fix already identified in Item 66: no way to edit an existing code into a discount code (confirmed via the `PUT /api/admin/promo-codes/:id` field list), needs a new `campaign_single_use` code created separately if a real discount-bearing reseller code is wanted. Not implemented, per standing instruction — this needs a product decision from Col (does he want reseller codes to ever carry discounts, a structural capability that doesn't exist today, or was "20% off" always meant to be configured separately per code via the other system).
+
+---
+
 ### ITEM 17 — "Launch override code works up to 50% off (TT50OFF – start here)"
 
 **Analysis:** TT50OFF was already built, tested, and pushed to production earlier this session (`new_changes.md` Step 10, plus a rounding fix and a Dec-31-2026 expiry added afterward). This item's real task per the checklist's own purpose — a fresh QA pass, not a rebuild — is independent re-verification against the *current* live state, confirmed with genuinely separate checks, not a re-paste of the earlier verification.
