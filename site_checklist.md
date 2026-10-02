@@ -402,6 +402,26 @@ Every real paid order checked has a matching `THANKYOU-XXXXXXXX` code (`batch_la
 
 ---
 
+### ITEM 20 — "A newly created code works straight away — today's NZ$ code was rejected"
+
+**Analysis:** Found a real, currently-active, genuine bug — and it's exactly reproducible, not a one-off. Checked every recent real `campaign_single_use` code in production and found **CDMFREE** (11 live `FREEOFFER-XXXXXX` codes, created 30 Sept 2026, 100% off, `country: "New Zealand"`) — the same code already flagged as failing in Item 62's urgent live ticket.
+
+**Root cause, confirmed by reading `resolveCampaignPromoCode()` (`public-checkout.js:384-418`) line by line:** line 410 rejects a code when `data.country` (the code's own country restriction) doesn't match `customerCountry`, which is resolved at the call site (`public-checkout.js:90`) as `payload.shippingCountry || payload.country`. Confirmed via a direct grep of `form-template.html` that **`payload.country` is never set anywhere on the real checkout form** — only `payload.shippingCountry` (`form-template.html:2673`), a plain manual "where should we ship the physical keepsake" dropdown (`form-template.html:1480-1490`), completely independent of `#checkout-country-select` (the auto-detected pricing/currency field already proven correct in Items 6-7).
+
+**This means the country check is actually testing "where is this being shipped," not "what currency/country is the customer in."** A customer can be physically in New Zealand — correctly auto-detected, correctly shown NZ$9.95 — and still get rejected by a NZ-restricted code, simply because they chose a different `shippingCountry` (e.g. shipping the printed keepsake to a relative overseas). Confirmed this exact scenario directly against the real database, using the live CDMFREE codes (non-destructively — called the real validation logic read-only, did not consume a code):
+- `shippingCountry: "Australia"` (NZ customer shipping to an overseas relative) → **`REJECTED: New Zealand required, got Australia`**
+- `shippingCountry: "New Zealand"` (default, same-country gift) → **`ACCEPTED`**
+
+Also directly confirmed the check is correctly case-insensitive (`new zealand` lowercase still matches) and that a null/missing country on either side correctly skips the check — so this is specifically and only the shipping-destination mismatch, not a formatting bug.
+
+**Confirmed the customer-facing failure is at least handled cleanly, not a crash:** traced the full real error path (`proceedToPayment()`, `form-template.html:3181-3209`) — a 400 response correctly surfaces the real server message (e.g. *"This promo code is only valid for customers in New Zealand."*) via `updatePurchaseNote()`, same clean non-crashing pattern already confirmed for Item 13's "already used" case. The customer does get *an* explanation — just a confusing one, since nothing on the page tells them the restriction is about shipping destination, not their own location/currency.
+
+**Problem:** Real, reproducible bug. `country` on a campaign code is being enforced against the shipping destination, not the customer's own country/currency — these are two different real-world concepts that the admin code-creation UI doesn't distinguish (`admin-fulfilment.js:1178`, a single generic `country` field with no label clarifying which one it means). Any NZ-restricted code (like CDMFREE) will incorrectly reject a genuine NZ-based, NZ$-paying customer whenever they ship to a different country — very plausibly the exact "today's NZ$ code was rejected" scenario described in this checklist item, and consistent with Item 62's live CDMFREE failure report.
+
+**Status:** 🔴 **fails for a real, common scenario (shipping overseas) — confirmed via direct, non-destructive testing of the real validation logic against live CDMFREE data.** Needs a product/code decision from Col: either (a) the country restriction should check the customer's own detected pricing country instead of `shippingCountry`, or (b) if shipping-destination restriction is actually intended (e.g. a NZ-only shipping promo), the admin UI and any customer-facing messaging should say so explicitly rather than just "This promo code is only valid for customers in New Zealand," which reads as a customer-location check. Not changed in code — this is a behavior decision, not an obvious bug fix, per standing instruction to flag these for Col rather than guess.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
