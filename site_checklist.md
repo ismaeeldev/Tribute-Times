@@ -239,7 +239,9 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** None found for this item specifically.
 
-**Status:** ✅ **done — confirmed via a real, live Stripe Checkout page, not just account settings.**
+**Re-confirmed consistently across every real Stripe page read during Items 2-5's E2E testing** (UK, US, AU, Philippines-card-path sessions) — "TRIBUTE TIMES" appeared correctly at the top of every single real Stripe Checkout page loaded this session, not just the one specifically checked for this item. No drift, no inconsistency across repeated real sessions.
+
+**Status:** ✅ **done — confirmed via a real, live Stripe Checkout page, not just account settings, and independently re-confirmed consistent across every other real Stripe session opened this session.**
 
 ---
 
