@@ -358,3 +358,13 @@ Checked directly: `PUT /api/admin/promo-codes/:id` (`src/phase2/admin-fulfilment
 **Answer: Col cannot just edit `colinM100` to add a discount — the edit screen doesn't support that field.** The only real path is creating a new, separate code via the "+ Create Codes" discount-code screen (which does support setting a discount). He can choose any code text for that new one, including re-using a similar name if he wants, but it would be a genuinely new/different code row, not an edit of the existing `colinM100`.
 
 **Status:** 🔴 **root cause found and fully confirmed with real evidence — not a code bug, a setup/configuration gap (the code was never built with a discount attached, and cannot be edited after the fact to add one).** Documented, not implemented, per standing instruction — needs Col to create a new discount code via the "+ Create Codes" screen if he wants a working `colinM100`-equivalent; the existing one cannot be converted.
+
+---
+
+### ITEM 67 — Duplicate of Item 66 (same message, re-sent verbatim)
+
+**Client message (2 Oct 2026):** Identical text to Item 66's message, word-for-word: *"Again paid for another one and code ColinM100 didn't work either. I can't progress til the codes work. Please advise what is happening and why they are not working please."*
+
+**Checked before treating this as a new incident:** queried the live database for any order created in the 30 minutes before this message — **zero new orders found.** This confirms this is the same message being re-sent, not a second, separate failed purchase attempt. No new investigation needed — the full root-cause analysis, the "can colinM100 just be edited" follow-up, and the answer are all already covered in Item 66 above.
+
+**Status:** ✅ **confirmed as a duplicate of Item 66, not a new issue — same answer applies, nothing further to investigate.** Logged as its own numbered item per the "every single change gets its own step" instruction, rather than silently merged.
