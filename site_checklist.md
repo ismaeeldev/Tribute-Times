@@ -422,6 +422,23 @@ Also directly confirmed the check is correctly case-insensitive (`new zealand` l
 
 ---
 
+### ITEM 21 — "Codes work no matter how they're typed — colinm, COLINM, colinM"
+
+**Analysis:** Confirmed case-insensitivity directly, through the real live HTTP API, not just by reading the code. Both real redemption mechanisms (Stripe-path campaign codes and GCash-path codes) normalize case independently, by design, in multiple places:
+
+**Stripe-path (`resolveCampaignPromoCode()`, `public-checkout.js:384-418`):** normalizes with `.trim().toUpperCase()` before a Postgres `.ilike()` (case-insensitive) lookup. Verified live against the real `TT50OFF` code via the actual `/api/public/promo/validate` endpoint (`public-checkout.js:194-204`) — confirmed this endpoint calls the exact same `resolveCampaignPromoCode()` used at real checkout submission, so this is a direct test of the real redemption path, not a separate pre-check:
+- `code=tt50off` → `{"valid":true}`
+- `code=TT50OFF` → `{"valid":true}`
+- `code=  tT50oFf  ` (mixed case + padding, URL-encoded) → `{"valid":true}`
+
+**GCash-path:** `isGeneratedGcashPromoCode()` (`gcash-payment-requests.js:1762-1764`) uses regex `/^GCASH[A-Z0-9]+$/i` — the `i` flag makes the format check itself case-insensitive. Confirmed all three real GCash code lookup sites in the file (`gcash-payment-requests.js:583`, `:1192`, `:1639`) also use `.ilike()`, the same Postgres case-insensitive match as the Stripe path — consistent, deliberate design across both mechanisms, not a coincidence.
+
+**Problem:** None found. (The checklist item's own example, `colinm`/`COLINM`/`colinM`, is actually a `consultant_demo` code with no discount capability at all per Item 14's finding — but that's an unrelated, already-documented issue; case-handling itself works correctly regardless of code type.)
+
+**Status:** ✅ **done — case-insensitivity confirmed via a real live HTTP test against the actual redemption function (not a mock), for both the Stripe/campaign-code path and the GCash-code path.**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
