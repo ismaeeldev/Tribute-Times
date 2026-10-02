@@ -324,3 +324,31 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 **Status:** ✅ **answered directly, no code change, no bug found — the confirm dialog's own text is accurate to what the code actually does.**
 
 ---
+
+### ITEM 66 — 🚨 URGENT: Col paid full price trying to use "colinM100", "can't progress until the codes work"
+
+**Client message (verbatim, 2 Oct 2026):** *"Again paid for another one and code ColinM100 didn't work either. I can't progress til the codes work. Please advise what is happening and why they are not working please."*
+
+**Investigated immediately with real evidence, same approach as Item 62.**
+
+**Found the exact order, confirmed with full certainty (not guessed):** `TT-20261002-0005`, `colindavidmccabe@gmail.com` (Col's own account) — `payment_status: paid`, `total_amount_nzd: 9.95` (**full price, no discount applied**), `notes: "Attribution: promo code colinM100."`, `sales_consultant_id` correctly set.
+
+**Root cause — this is a genuinely different problem from Item 62's TT50OFF bug, not the same issue recurring:**
+
+Looked up `colinM100` directly in the live database: `code_type: "consultant_demo"`, `discount_type: null`, `discount_value: null`, `stripe_coupon_id: null`.
+
+**`colinM100` was created as an agent/reseller tracking code, not a discount code.** This is the exact two-code-system confusion already fully investigated and documented earlier this session (`new_changes.md` Step 8, and the admin filtering bug in Step 5): this codebase has two genuinely separate things that are easy to conflate —
+1. **`consultant_demo` codes** (created via the Agent/reseller signup or management screen) — these only track which agent referred a sale (for commission credit) and optionally grant free demo keepsakes. **They have no discount fields at all — they structurally cannot give a customer money off, by design**, confirmed via the schema (`discount_type`/`discount_value` are both `null` on this code, and the `consultant_demo` code type has no discount columns populated anywhere in this codebase).
+2. **`campaign_single_use` codes** (created via the admin's "+ Create Codes" button — the system TT50OFF uses) — these are the only code type that can carry a real discount.
+
+**What actually happened, confirmed by the order record:** Col typed `colinM100` at checkout. The system correctly recognized it as a real, valid agent-attribution code (`sales_consultant_id` was correctly set on the order — that part worked exactly as intended) — but since it was never built with a discount attached, checkout proceeded at full price, with no error, because **this is by design**: `resolveCampaignPromoCode()` only looks for `campaign_single_use` codes; a `consultant_demo` code like `colinM100` is invisible to it and silently contributes no discount, which is the intended, correct behavior for a pure tracking code.
+
+**This is not a bug — `colinM100` was never set up to BE a discount code.** The real issue is the same usability gap already flagged in Step 8 of `new_changes.md`: it's easy for Col himself to not realize which of the two code systems he's creating a code in, and the UI doesn't make the distinction obvious enough.
+
+**Why this is different from Item 62 (worth being precise about, not lumping them together):**
+- Item 62 (TT50OFF): a genuine discount code, correctly built as `campaign_single_use` with a discount configured — but the Stripe coupon backing it was only ever valid in test mode, so it failed with a real Stripe error and never reached payment (a pending order, no successful charge).
+- Item 66 (colinM100): not a discount code at all by its own configuration — checkout succeeded, Col was correctly and successfully charged, just at full price, because there was never a discount to apply in the first place.
+
+**Problem:** Col expected a discount from `colinM100` and didn't get one, and paid real money as a result. This needs two things: (1) an honest explanation of why (above), and (2) if Col actually wants `colinM100` to BE a discount code, it needs to be rebuilt as a `campaign_single_use` code (or a parallel discount code created) — not a backend bug fix, a configuration/setup gap.
+
+**Status:** 🔴 **root cause found and fully confirmed with real evidence — not a code bug, a setup/configuration gap (the code was never built with a discount attached).** Documented, not implemented, per standing instruction — needs Col to confirm whether he wants `colinM100` itself converted into a real discount code (and at what %), or whether a separate new discount code should be created instead.
