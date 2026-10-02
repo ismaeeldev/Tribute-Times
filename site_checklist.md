@@ -36,11 +36,28 @@ For **every single item** on the 60-item list, in order (unless Col specifies a 
 
 ### ITEM 1 — "NZ purchase shows NZ$9.95 and completes"
 
-**Analysis:** Confirmed via a real browser test driving the actual `applyPricingCountry('New Zealand')` function in `public/landing.html` — the landing page correctly displays `$9.95` for New Zealand. Confirmed via a real, live Stripe API call (test-mode Checkout Session created and retrieved, not just code reading) that the actual checkout charge is `9.95 NZD` — the stored line item (`src/phase2/constants.js`: `priceCents: 995`, `src/phase2/public-checkout.js:buildLineItems()`: `currency: 'nzd'`) matches exactly.
+**Re-verified with a genuine full end-to-end Playwright test (2 Oct 2026), not the narrower price-only check from the first pass.** Per the updated instruction, this item now includes the actual "completes" verification — the full real purchase flow, redirect logic included, rather than deferring that to Items 57-59.
 
-**Problem:** None. This is the one country where the displayed price and the actual charge genuinely agree, because NZD is the only currency the backend is hardcoded to use — see Item 2's analysis for the related finding that does NOT hold for the other 3 countries in this section.
+**E2E test performed, real browser, real server, real Stripe test-mode payment, start to finish:**
+1. Navigated to `/public` fresh.
+2. **Found and fixed a real gap in the original test plan while building this**, worth noting as its own small finding: the form isn't immediately visible — there's an occasion-selection step first ("Choose the Occasion" tile grid) that the original Item 1 analysis never accounted for. Not a bug, just confirms the real user journey starts one step earlier than assumed.
+3. Selected "Happy Birthday", filled recipient name/DOB/country (New Zealand)/personal message.
+4. Clicked Generate — real keepsake generation completed (not instant, matches the site's own "up to 60 seconds" copy).
+5. Filled checkout customer name/email. Confirmed on-screen: **"Selected option: Digital. Total today: NZ$9.95. Payment: card using secure Stripe checkout."** — exact match to this item's requirement.
+6. Clicked "Pay by Card" — **genuinely redirected to a real Stripe Checkout page** (`checkout.stripe.com`), confirmed the page shows "TRIBUTE TIMES" as the business name and "9.95" as the amount.
+7. Filled Stripe's real test card (`4242 4242 4242 4242`) and submitted for real.
+8. **Confirmed genuine redirect back** to `/public?checkout=success&order=<real-id>`.
+9. Reloaded that exact URL fresh (simulating a customer re-visiting/refreshing) and confirmed the final state: **"Payment complete. Your clean keepsake is ready. Use Download PDF to save it."**, a working "Download PDF" button, and a fully-rendered, correctly-personalized keepsake (real researched content for the date, "HAPPY BIRTHDAY — MARGARET WILSON" matching exactly what was entered, no placeholder text, no watermark).
 
-**Status:** ✅ **done — confirmed correct, display matches real Stripe charge exactly.** "Completes" (the full purchase flow through to a paid order) was not independently re-run end-to-end with a real test card as part of this specific item — that full-flow completion check belongs to Items 57–59 (full purchase on phone/computer) in the Phones & browsers section, to avoid testing the same full checkout flow redundantly across multiple items; this item specifically verifies the NZ price figure itself, which is confirmed correct.
+**This is a genuine, complete pass of the real purchase flow — not simulated, not API-only.**
+
+**🔴 Real bug found during this E2E pass, not from code-reading — caught via actual browser console errors during the test:** `public/form-template.html`'s Content-Security-Policy meta tag (`line 12`) restricts `style-src` to `'self' 'unsafe-inline'` — **missing `https://fonts.googleapis.com`**, unlike `public/index.html`'s CSP (`line 12` there), which correctly includes it. This causes the browser to **block both of this page's Google Fonts `<link>` stylesheets entirely** (confirmed via real console errors: *"Refused to load the stylesheet 'https://fonts.googleapis.com/css2?family=Inter...' because it violates... style-src"* and the same for the `UnifrakturMaguntia`/`Playfair Display`/`EB Garamond` combined link). Visually confirmed via screenshot: the checkout form's UI text renders in a generic system sans-serif font instead of the intended branded typefaces. **The keepsake's own masthead font ("The Tribute Times" in blackletter) is unaffected** — that one is self-hosted, not loaded via the blocked Google Fonts link, so the actual product output still looks correct; this bug only affects the surrounding form/checkout UI's typography on this one page.
+
+**Problem:** A real, narrow, confirmed bug — this is the single most important page on the whole site (where every purchase happens), and its own form text doesn't render in the intended branded fonts due to a one-line CSP misconfiguration that a sibling page (`index.html`) already has correct.
+
+**Solution (documented, not implemented per standing instruction):** add `https://fonts.googleapis.com` to `form-template.html`'s `style-src` directive, matching the exact pattern already correct in `index.html`'s CSP. A one-line, low-risk fix — but not made yet, pending Col's go-ahead per "document steps, don't implement."
+
+**Status:** ✅ **"shows NZ$9.95 and completes" — fully confirmed true, genuine E2E pass with a real Stripe test payment.** 🔴 **New finding from this deeper pass: a real font-loading CSP bug on the checkout page itself, not previously caught by the narrower first-pass check.** Not fixed yet — documented only.
 
 ---
 
