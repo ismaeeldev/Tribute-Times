@@ -209,7 +209,11 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **One test-script mistake made and caught during this process, worth recording honestly:** an initial automated test used a flawed regex (`/Selected option:.*?\./`, non-greedy) that stopped matching at the first period in "Selected option: Digital." — cutting off the sentence before the actual price text, making it look like all 5 currencies failed to update. Investigated before reporting any of that as real bugs: confirmed via a more careful debug script, both the direct function call and the real dropdown click correctly update the price every time. This was 100% a test-script defect, not a site bug.
 
-**Status:** ✅ **done — confirmed on both landing.html AND the actual checkout page, via both direct function calls and the real clickable dropdown UI.** No bugs found. Still cross-referenced to the cross-cutting finding for the separate, deeper display-vs-charge issue, not duplicated here.
+**Visual/UI confirmation, completing this item fully:** real screenshots of the actual flag dropdown — confirmed it opens cleanly showing all 5 countries with correct flag icons and readable labels, no layout/clipping issues. Selected Philippines (the most visually distinct price-format change: `$`-style decimals → `₱` symbol) and confirmed the price panel and checkout summary both correctly update to **"≈ ₱199.00"**.
+
+**One tiny cosmetic inconsistency noted, not a bug:** this checkout-page estimate shows "₱199.**00**" (2 decimals), while the GCash modal and landing page both show "₱199" (no decimals) for the exact same amount. Purely a formatting difference, doesn't affect any price being correct, not worth a real fix on its own — noted for completeness since the instruction is to find and report everything, not just functional bugs.
+
+**Status:** ✅ **done — confirmed on both landing.html AND the actual checkout page, via direct function calls, the real clickable dropdown UI, and visual screenshots.** No functional bugs found; one cosmetic decimal-formatting inconsistency noted. Still cross-referenced to the cross-cutting finding for the separate, deeper display-vs-charge issue, not duplicated here.
 
 ---
 
