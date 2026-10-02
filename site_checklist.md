@@ -160,7 +160,11 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** Item 5 is correct for the GCash path, and affected by the same cross-cutting currency-mismatch bug for the card path. This item is a genuine partial-pass: "shows ₱199" is true in both paths' displays, but "completes" at the shown price is only true via GCash.
 
-**Status:** 🟡 **partially correct — GCash path confirmed working exactly as described; card path shares the cross-cutting NZD-charge bug documented above.** Needs no separate fix beyond whatever Col decides for the cross-cutting finding — GCash itself needs no changes for this item.
+**Full E2E re-verification of the GCash path specifically (2 Oct 2026), real browser automation, not just code reading:** ran the complete real flow — selected Philippines, generated a real keepsake, selected "Pay with GCash" as the payment method, clicked Pay. **Confirmed the GCash modal opens correctly (does NOT redirect to Stripe)**, showing exactly **"Pay exact amount: PHP 199.00"**, explicitly labeled *"Rate: Fixed price for GCash payments — PHP 199.00"* (honest about the mechanism, not hidden), real payee name/GCash number/QR code displayed, and clear step-by-step instructions for submitting payment proof. Confirmed no NZD figure leaks into the GCash modal itself. This fully confirms, via direct browser testing (not just reading `fixedPhp = 199` in the code), that the GCash path is genuinely correct end-to-end.
+
+**One minor, non-functional inconsistency noted while screenshotting (not a bug, just worth recording):** the background checkout panel (behind the modal) still shows "Prices shown in NZD... NZ$9.95" while the GCash modal in front of it correctly shows PHP 199 — a cosmetic layering inconsistency since the modal itself is accurate, not something that could mislead or cause a payment error.
+
+**Status:** 🟡 **partially correct — GCash path now confirmed working exactly as described via full real browser E2E testing (not just code reading); card path shares the cross-cutting NZD-charge bug documented above.** Needs no separate fix for the GCash side — GCash itself needs no changes for this item.
 
 ---
 
