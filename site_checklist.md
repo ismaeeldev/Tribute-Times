@@ -225,7 +225,9 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** This item is the most direct, precise statement of the cross-cutting bug on the whole checklist — it specifically asks whether landing/checkout/Stripe all agree, and the honest answer is: landing and checkout agree with each other, but neither agrees with what Stripe actually charges, for 3 of 5 currencies (UK, US, AU — NZ matches by coincidence since it's the actual backing currency; Philippines is correct only via GCash).
 
-**Status:** 🔴 **fails as described, for the same cross-cutting reason documented above** — landing page and checkout page are consistent with each other, but not with Stripe's real charge for AU/UK/US (NZ and PH-via-GCash are fine).
+**Full E2E coverage already complete for this exact 3-stage chain — confirmed via Items 2-5's real, live testing, not re-run redundantly here:** each of the 4 non-NZ currencies was independently tested this session all the way from landing page → checkout page → the real Stripe Checkout page (actual Stripe URL, actual page content read directly), for every one of Items 2, 3, 4, and 5's card path. No new testing needed — re-running the identical 3-stage chain a second time under a different item number would duplicate work already done with full rigor. UI/visual screenshots of both the landing page and checkout page are also already captured across Items 1, 6, and 7. No redirect-logic applies (same reasoning as other pure-display items — no payment-completion flow is specific to this item beyond what Items 1-5 already drove through).
+
+**Status:** 🔴 **fails as described, for the same cross-cutting reason documented above** — landing page and checkout page are consistent with each other, but not with Stripe's real charge for AU/UK/US (NZ and PH-via-GCash are fine). **Fully E2E-verified via Items 2-5's testing**, not re-tested in isolation to avoid redundant work.
 
 ---
 
