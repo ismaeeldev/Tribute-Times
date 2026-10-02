@@ -259,6 +259,18 @@ Searched exhaustively (`grep` across all `src/phase2/*.js`) for any other admin 
 
 ## Section: Discount codes (items 13–26)
 
+### ITEM 13 — "Monthly offer code (e.g. WELCOME20) takes 20% off"
+
+**Analysis:** Checked the real production `promo_codes` table directly for `WELCOME20`: `code_type: campaign_single_use`, `discount_type: percent`, `discount_value: 20`, **`used_count: 1, max_uses: 1`** — this specific code has already been fully consumed by a real past use. Confirmed this via a real live E2E test (not assumed from the data alone): entered `WELCOME20` at checkout and clicked Pay — **the real, correct error message displayed clearly: "This promo code has already been used."** No crash, all form data preserved, consistent with the exact error-handling logic already confirmed earlier this session (`resolveCampaignPromoCode()`).
+
+**Problem:** None — this is working exactly as designed. `WELCOME20` specifically can't be tested for its *discount-applies-correctly* behavior right now since it's already spent, but this is expected behavior (campaign codes are single-use by default unless `maxUses` is explicitly raised), not a bug.
+
+**Verified the actual discount-application mechanism works correctly using a different, known-good code** (`TT50OFF`, confirmed live-mode-correct and with remaining capacity) rather than creating a disposable throwaway promo code in the live database (avoided per this project's standing "don't leave test clutter" discipline) — real E2E test through to the actual Stripe page confirmed: **"TT50OFF — Facebook ad (Philippines) -PKR 805.31 50% off... Total due PKR 803.69"** (≈NZ$4.97, correctly half of $9.95) shown as a real, itemized line-item discount on Stripe's own page, not just a pre-checkout display figure. This is decisive, direct proof that the discount-code mechanism (when a code is correctly live-mode-configured, same as Items 62/66's findings) genuinely reduces the real Stripe charge, not just the on-screen estimate.
+
+**Status:** ✅ **mechanism confirmed fully correct** (clear "already used" error for a spent code; genuine, itemized discount reduction confirmed on the real Stripe page for a working code). `WELCOME20` itself is simply out of uses — not a bug, a fact about its current state, worth Col knowing if he expects it to still be available for new customers (he may want to raise its `max_uses` or create a fresh batch, a product decision, not a code fix).
+
+---
+
 ### ITEM 17 — "Launch override code works up to 50% off (TT50OFF – start here)"
 
 **Analysis:** TT50OFF was already built, tested, and pushed to production earlier this session (`new_changes.md` Step 10, plus a rounding fix and a Dec-31-2026 expiry added afterward). This item's real task per the checklist's own purpose — a fresh QA pass, not a rebuild — is independent re-verification against the *current* live state, confirmed with genuinely separate checks, not a re-paste of the earlier verification.
