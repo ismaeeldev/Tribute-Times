@@ -285,3 +285,22 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 **Status:** ✅ **answered directly, no code change, logged for the record.**
 
 ---
+
+### ITEM 64 — Col: "Should that sales money automatically end up in my bank account... I haven't received that money. Do I need to do something else?"
+
+**Client message (2 Oct 2026):** Direct question about Stripe payouts, following item 63's dashboard explanation.
+
+**Analysis (checked everything genuinely checkable from code/API, honest about the real limit of what this session can see):**
+- Confirmed via exhaustive grep across `src/phase2/*.js` and `server.js`: **this codebase contains zero payout logic of any kind.** It creates Stripe Checkout Sessions and reads back `payment_status` — it never touches bank transfers, payout schedules, or Stripe Connect payout routing. Payouts from a Stripe balance to a connected bank account are entirely a Stripe **account-level** setting (configured in the Stripe Dashboard, not this app), so there is nothing in this codebase that could be "broken" in a way that would stop money reaching Col's bank.
+- Directly attempted to check Col's actual Stripe balance and payout history, to give a real answer instead of a generic one — **blocked by the same restricted-key permission issue already found in Item 62**: `Balance Read` and `Payouts Read` are both denied for the live key available here. Confirmed via Stripe's own permission-denied error, not assumed.
+
+**Problem:** This is a real question only Col can get the real answer to — **this session genuinely cannot see his Stripe balance or payout history**, so cannot confirm or rule out whether money is sitting there, already paid out, or stuck.
+
+**Answer to relay to Col (what IS knowable, to make his own Dashboard check faster):**
+1. **Yes, in a standard non-connected Stripe setup, money from paid Checkout Sessions does automatically pay out to the connected bank account** — on whatever payout schedule is configured (Stripe's default for a new NZ account is often a rolling 7-day delay before the *first* payout, then a regular schedule after that — but this is account-specific, not something this app sets).
+2. **Where to check himself:** Stripe Dashboard → **Balance** (shows current available/pending balance) → **Payouts** tab (shows payout history and the account's payout schedule/frequency). This will show definitively whether money has already been paid out, is pending, or is stuck for some reason (e.g. an unverified bank account, a hold on the account).
+3. **A genuinely common first-time cause, worth him checking specifically:** a new Stripe account's very first payout is often delayed (commonly 7-14 days) while Stripe verifies the account — if this site only started taking real payments recently (this session's own order records show real paid orders only from very recently), this delay could fully explain "I haven't received it yet" without anything being broken.
+
+**Status:** 📝 **answered with everything checkable from here; the actual balance/payout figures are not visible to this session (confirmed via a real, denied API call, not assumed) — Col needs to check his own Stripe Dashboard's Balance and Payouts screens directly for the real numbers.** No code change — there is nothing in this codebase to fix for this item.
+
+---
