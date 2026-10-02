@@ -618,6 +618,89 @@ There are genuinely **two separate systems** in the admin dashboard, confirmed d
 
 ---
 
+### ITEM 34 — "Keepsake arrives and opens (Gmail, Outlook, iPhone)"
+
+**Analysis:** Per the user's decision after Item 33's finding, tested against the one real customer email that does exist with a keepsake-unlocking mechanism — the GCash approval email (the Stripe path has no equivalent email at all, confirmed in Item 33).
+
+Rendered the real `buildGcashPromoApprovedEmail()` template using genuine production data (the real Item 27-32 test request and its real generated promo code), then screenshotted the actual rendered HTML in a browser. Confirmed: clean branded layout, correctly populated customer name and real promo code, no broken images (the logo uses an absolute URL — `${baseUrl}/logo_header.png` — which works regardless of email client, unlike a relative path that would break in most clients). The underlying markup (`wrapBrandedEmail()`, `email-service.js:59-91`) uses a table-based layout with inline styles only and no external stylesheet — the standard, deliberate pattern for broad email-client compatibility (Gmail/Outlook strip `<style>` blocks and most CSS features; this template doesn't rely on any of them).
+
+**Problem:** None found in the template itself. Could not test actual delivery/rendering inside real Gmail/Outlook/iPhone mail apps from this environment (no real inbox access) — verified the HTML structure follows the correct compatibility pattern instead, which is the strongest verification available without a live mailbox.
+
+**Status:** ✅ **done for the email that exists (GCash approval) — real data, correctly rendered, uses an email-client-safe HTML structure.** Could not be tested inside real Gmail/Outlook/iPhone mail clients directly from this environment; structural compatibility confirmed via code read instead.
+
+---
+
+### ITEM 35 — "Emails don't land in spam"
+
+**Analysis:** Confirmed the real email infrastructure in use: Resend (`RESEND_API_KEY`, already confirmed live in `.env` per Item 19), a reputable transactional email provider with its own sender-reputation and deliverability management — not a raw/unauthenticated SMTP send, which would be the main real risk factor for landing in spam.
+
+**Problem:** Spam placement depends on domain authentication (SPF/DKIM/DMARC records for `tributetimes.co.nz`) and sending-domain reputation, which are DNS/Resend-dashboard configuration, not something verifiable by reading this codebase or testing locally — this environment has no access to the live DNS records or Resend account's domain verification status.
+
+**Status:** ⚪ **cannot be directly verified from this environment** — confirmed the app uses a reputable provider (Resend) rather than a raw send, which is the right foundation, but actual spam-folder placement depends on DNS/domain configuration outside this codebase. Recommend Col (or whoever manages the `tributetimes.co.nz` DNS/Resend account) confirms SPF/DKIM/DMARC are correctly set up, and do a real send-and-check test from a real Gmail/Outlook inbox.
+
+---
+
+### ITEM 36 — "Name, date and occasion are correct on email and keepsake"
+
+**Analysis:** Full real, live test using the actual Item 27 test data. The real keepsake itself (already screenshotted during Item 27's E2E test) correctly showed: recipient name "ITEM27 TEST RECIPIENT" in the masthead headline, the correct date (15th May 2000, matching the `dateOfBirth` entered), and the correct occasion ("HAPPY BIRTHDAY"), all genuinely rendered — not placeholder text.
+
+**The GCash approval email itself, by contrast, does NOT include date or occasion at all** — confirmed via direct inspection of the rendered email (Item 34): it only shows the product tier ("Digital") and the promo code, nothing about the recipient's name, date, or occasion. This is a real, narrow distinction worth being precise about: the *keepsake* (the actual newspaper) correctly has all three fields; the *email* (which only delivers a redeem code, not the keepsake itself, confirmed in Item 33's investigation) was never designed to repeat them.
+
+**Problem:** None on the keepsake itself. The email simply doesn't carry these fields, which is consistent with its real purpose (code delivery, not content delivery) — not a bug, since the customer only sees the actual keepsake content after redeeming the code and landing back on the real site.
+
+**Status:** ✅ **done — keepsake content (name/date/occasion) confirmed correct via real test data.** Noting precisely that the GCash email itself doesn't repeat these fields, which is consistent with its actual purpose rather than a defect.
+
+---
+
+### ITEM 37 — "Download link still works the next day"
+
+**Analysis:** Confirmed via code read that there is no "link," exactly — the real mechanism is a URL (`/public?checkout=success&order=<id>`) that the browser visits, which calls `GET /api/public/orders/:orderId` (`public-checkout.js:155-170`) to live-load the order fresh from the database every time. Confirmed directly via code read: **no expiry timestamp, no time-based check, no token with a TTL anywhere in this endpoint** — it only checks the order genuinely exists and loads its current `payment_status` and `renderedHtml`.
+
+**Proved this directly, not just inferentially** — tested against a real order paid over 5 weeks before today (`TT-20260825-0001`, paid 25 August 2026, today is 2 October 2026), far beyond "the next day": the real live API call correctly returned `paymentStatus: "paid"` and the full `renderedHtml` intact, exactly as it would the day it was paid.
+
+**Problem:** None found — this is actually a stronger guarantee than "works the next day," since there's no expiry mechanism to begin with.
+
+**Status:** ✅ **done — confirmed via a real, direct test against a genuinely old (5+ week) paid order, not just a same-day one, proving durability well beyond "the next day."**
+
+---
+
+### ITEM 38 — "There's a way to resend if the customer's email had a typo"
+
+**Analysis:** Searched for any resend mechanism across both the admin backend and admin UI — confirmed, exhaustively, that none exists:
+- No "resend" button or label anywhere in `admin.html` (confirmed via a direct text search — zero matches).
+- No dedicated resend endpoint in `admin-fulfilment.js` or `public-checkout.js`.
+- No general order-edit endpoint that could let Col correct a typo'd `customer_email` either — the only order-mutation endpoint found is `PATCH /api/admin/orders/:orderId/status` (status changes only, not field edits).
+
+**Problem:** Real, confirmed gap. If a customer mistypes their email at checkout, there is currently no way — for the customer or for Col — to correct it and get the email re-sent. Given Item 33 already found the Stripe path has no confirmation email at all (so a typo there is less immediately costly), this matters most for the GCash path, where the approval email carrying the one-time redeem code is the customer's only way to actually unlock their paid keepsake — a typo'd email on that path would mean a customer paid but has no way to receive their code at all without contacting Col directly.
+
+**Status:** 🔴 **fails — no resend mechanism exists anywhere in admin or the backend, confirmed via exhaustive search.** Flagged as a real, missing feature, most urgent for the GCash path specifically (where email is the only delivery mechanism for a paid customer's redeem code) — not built here since it needs a decision on scope (edit-email-and-resend? Or just a manual "resend this email" button using the existing address?).
+
+---
+
+### ITEM 39 — "Col is notified of each new sale"
+
+**Analysis:** Confirmed via code read and real configuration check, not just assumption. `buildPublicOrderAdminEmail()` (already found during Item 33's investigation) fires on every paid Stripe order (`public-checkout.js:834-839`) and every GCash-redeemed order (`sendGcashRedeemedAdminAlert()`, `gcash-payment-requests.js:1839-1862`) — both send `to: PHASE2_CONFIG.adminAlertEmail`.
+
+**Confirmed the real configured address is genuinely Col's own email, not a placeholder:** `ADMIN_ALERT_EMAIL=colindavidmccabe@gmail.com` in the live `.env`, matching the code's own default fallback exactly (`config.js:12`) — so even if the env var were ever accidentally removed, it would still correctly default to Col's real address rather than silently going nowhere.
+
+**Problem:** None found — this is genuinely correct and working today, independent of the gaps found in Items 33/38. The sale notification Col actually relies on today is this admin email, not a customer-facing confirmation.
+
+**Status:** ✅ **done — confirmed correct via code read and the real, live configured email address, for both the Stripe and GCash sale paths.**
+
+---
+
+### ITEM 40 — "Reseller and florist sign-up forms reach Col's email"
+
+**Analysis:** Searched the real public sign-up endpoint (`POST /api/admin/...` — actually the public reseller/florist application handler in `admin-fulfilment.js:2201+`, confirmed it handles both reseller AND florist applications via a shared `partner_type` field, not two separate endpoints) for any `sendEmail()` call — confirmed, via a complete list of every `sendEmail()` call in the entire file (only one exists, the already-documented "posted" shipping email from Item 33's search), that **no notification email is sent to Col when a new reseller/florist application is submitted.** The application is written directly to the `reseller_signup_requests` table with no accompanying email of any kind.
+
+**Real mitigating factor found, not just a bare "it fails":** the admin dashboard has a dedicated "📝 Reseller Requests" nav section with a live pending-count badge (`admin.html:1280`), and this badge was itself already the subject of a real, documented prior bug fix (3 Sept 2026) — originally only refreshed on page-load/session-restore, not on a fresh login, meaning "a real admin signing in fresh would have no idea there were pending requests." That specific gap is already fixed (`refreshResellerRequestsBadge()` now also runs after login). So while there's no EMAIL notification, Col does have a working, already-hardened dashboard indicator that will show him pending requests as soon as he logs in.
+
+**Problem:** This checklist item specifically asks about requests reaching Col's **email**, and they genuinely don't — only the in-dashboard badge exists. If Col doesn't log into the admin dashboard regularly, or isn't currently checking it, a new reseller/florist application could sit unnoticed indefinitely with no external alert at all (no email, no push notification, nothing).
+
+**Status:** 🔴 **fails the literal item ("reach Col's email") — confirmed via exhaustive code search, no email exists for this event.** 🔶 Noting the real, working dashboard-badge fallback as a mitigating factor, not a substitute — flagged for Col to decide if an email notification should be added alongside the badge (same `buildPublicOrderAdminEmail`/`adminAlertEmail` pattern already proven working in Item 39 could be reused directly).
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
