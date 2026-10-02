@@ -122,7 +122,9 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** Identical pattern to Item 2 — a UK customer sees "£4.95" but is actually charged NZ$9.95. Of the 4 currencies on this list, this is the largest proportional mismatch (NZ$9.95 is roughly double £4.95 at typical exchange rates), making this the most visible/likely-to-cause-complaints instance of the shared bug.
 
-**Status:** 🔴 **bug found, not yet fixed — same cross-cutting issue as Item 2, needs Col's decision before a fix is built.** Display price confirmed correct in isolation; real charge does not match.
+**Full E2E re-verification (2 Oct 2026):** ran the real purchase flow with United Kingdom selected, through to the actual Stripe page. Confirmed checkout summary correctly shows **"Total today: NZ$9.95"** (same honest behavior already established for Item 2). Confirmed directly from the real Stripe page's content: **"£" and "4.95" appear nowhere at all** — only `NZ$9.95` and Stripe's own unrelated currency picker. Redirect-logic and UI/viewport mechanics not independently re-run, same reasoning as Item 2 (neither branches on country, already exhaustively covered by Item 1).
+
+**Status:** 🔴 **bug fully confirmed via complete E2E flow through to the real Stripe page — not yet fixed, needs Col's decision (see cross-cutting finding).** Same pattern as Item 2: checkout page itself is honest (NZD, no false GBP precision), landing page is the one overstating precision; real Stripe charge never shows GBP.
 
 ---
 
@@ -132,7 +134,9 @@ Continued through to the real Stripe page and read its exact content directly: c
 
 **Problem:** Identical pattern to Items 2 and 3.
 
-**Status:** 🔴 **bug found, not yet fixed — same cross-cutting issue, needs Col's decision before a fix is built.** Display price confirmed correct in isolation; real charge does not match.
+**Full E2E re-verification (2 Oct 2026):** ran the real purchase flow with United States selected, through to the actual Stripe page. Confirmed checkout summary shows **"Total today: NZ$9.95"**. Confirmed directly from the real Stripe page: **no "6.95", no "USD" anywhere** — only `NZ$9.95`. (One test-script timing flake hit during this run — the first attempt's `innerText()` call raced ahead of the page finishing render and came back empty; re-ran with a brief settle delay and got a clean, consistent read. Noting this explicitly since catching and correcting a flaky test read, rather than reporting a false "empty page" bug, matters for accuracy.) Redirect-logic and UI/viewport mechanics not independently re-run, same reasoning as Items 2-3.
+
+**Status:** 🔴 **bug fully confirmed via complete E2E flow through to the real Stripe page — not yet fixed, needs Col's decision (see cross-cutting finding).** Same pattern as Items 2-3: checkout page honest (NZD), landing page overstates precision, real Stripe charge never shows USD.
 
 ---
 
