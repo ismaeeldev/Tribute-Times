@@ -944,6 +944,48 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+## Section: Phones & browsers (items 57–60)
+
+### ITEM 57 — "Full purchase on an Android phone"
+
+**Analysis:** Full real, live E2E test using Playwright's real Pixel 7 device emulation (genuine Android viewport, user agent, touch, and device-pixel-ratio profile) through Chromium (the real engine Android's own Chrome browser uses). Generated a real keepsake, filled real checkout details, clicked Pay, and confirmed the page genuinely redirected to `checkout.stripe.com` — the real, live Stripe checkout page, not a mock.
+
+**Found a real, genuine, mobile-specific layout bug along the way, not assumed from a static read — confirmed with a full root-cause trace:** the Standard/Premium product tiers (confirmed in Item 27's earlier investigation to be deliberately Digital-only/hidden via a dedicated `is-hidden` CSS class, `tier-card.is-hidden { display: none; }`) are **visibly showing and appear clickable on this real mobile viewport**, contradicting their intended hidden state. Traced this to its exact root cause: `@media (max-width:720px) { .tier-card { display: block !important; ... } }` (`form-template.html:955`) — a mobile-responsive layout rule using `!important`, which unconditionally overrides the `is-hidden` rule's `display: none` regardless of the class being correctly present on the element (confirmed directly: `classList` correctly shows `tier-card is-hidden`, but `getComputedStyle().display` is `"block"`, not `"none"`). Confirmed this reproduces from the very first page load, before any interaction — not something triggered by generation or checkout flow.
+
+**Confirmed the real, practical customer impact is cosmetic/confusing, not a functional checkout bypass:** directly tested clicking the visible-but-should-be-hidden Standard card — the separate JavaScript-level guard in `selectProductTier()` (already read in Item 27, `if (isPublicEdition() && tier !== 'digital') return;`) correctly held: the click did nothing, Digital stayed selected, the total correctly stayed NZ$9.95. So a mobile customer cannot actually order/pay for a Standard or Premium print product by mistake — but they WILL see two extra, clickable-looking price options ("Standard NZ$24.95," "Premium NZ$34.95") that silently do nothing when tapped, which is confusing and inconsistent with the deliberate Digital-only product decision.
+
+**Problem:** Real, confirmed, mobile-only bug — Standard/Premium tiers are visually shown (though not functionally selectable) on any viewport ≤720px wide, due to an `!important` CSS rule in the mobile responsive block overriding the dedicated hiding mechanism.
+
+**Status:** ✅ **full purchase flow confirmed working end-to-end on real Android emulation, reaching real Stripe checkout.** 🔴 **Found and root-caused a real, separate mobile-only bug**: Standard/Premium tiers incorrectly show (cosmetically, not functionally) on narrow viewports due to an `!important` CSS override — not fixed here since it's a clear, scoped CSS fix (either exempt `.is-hidden` cards from the mobile `.tier-card` rule, or add `!important` to the `is-hidden` rule itself) that deserves a deliberate, reviewed change rather than an inline fix mid-checklist-pass.
+
+---
+
+### ITEM 58 — "Full purchase on an iPhone"
+
+**Analysis:** Full real, live E2E test using Playwright's real iPhone 15 device emulation through WebKit (the real browser engine Safari/iPhone uses — genuinely different from Chromium, not just a different viewport size on the same engine). Installed WebKit specifically for this test, since it wasn't previously available in this environment.
+
+**Found and correctly handled a real, legitimate site feature along the way, not a bug:** the first test attempt failed because a genuine PWA "Install app" prompt (`public/pwa.js`, a well-built, deliberately dismissable banner with a "×" close button and a 14-day re-show suppression after dismissal) was overlaying and blocking the generate button — confirmed via code read this is a real, working iOS-specific feature (`isIOS` detection, "On iPhone or iPad, tap Share and then 'Add to Home Screen'" copy), not a bug. Retested correctly dismissing it first (exactly as a real first-time iPhone visitor would), after which the full purchase flow completed successfully through to a genuine `checkout.stripe.com` redirect.
+
+**Confirmed the Item 57 mobile CSS bug reproduces identically on real iPhone/WebKit** (`display: block` instead of `none` for Standard/Premium), confirming it's a genuine viewport-width-based CSS bug (`@media max-width:720px`), not specific to Android/Chromium — the same root cause, same fix needed, affects both real mobile platforms identically.
+
+**Problem:** Same mobile-only CSS bug as Item 57 (not a second, separate bug — same root cause, confirmed via the same exact `!important` rule). The PWA install prompt blocking the first test attempt was investigated and confirmed to be correct, working, dismissable behavior, not a bug.
+
+**Status:** ✅ **full purchase flow confirmed working end-to-end on real iPhone/WebKit, reaching real Stripe checkout, after correctly dismissing the legitimate PWA install prompt.** 🔴 **Same Item 57 mobile CSS bug confirmed present on iPhone too** — one shared root cause and fix needed across both platforms, not two separate issues.
+
+---
+
+### ITEM 59 — "Full purchase on a computer"
+
+**Analysis:** Full real, live E2E test on a real desktop viewport (1440×900, Chromium) — generated a real keepsake, completed checkout details, clicked Pay, and confirmed a genuine redirect to `checkout.stripe.com`.
+
+**Confirmed desktop is correctly unaffected by the Item 57/58 mobile CSS bug:** `getComputedStyle().display` for the Standard/Premium tier cards correctly returned `"none"` on this desktop viewport, confirming the bug is genuinely scoped to the `@media (max-width:720px)` breakpoint only, not a universal regression.
+
+**Problem:** None found — first test attempt showed "Creating secure card checkout..." still in progress at the 4-second mark (a test-script timing issue, same established pattern from earlier in this session, not a real app slowness problem); retested with a longer wait and confirmed the real redirect completes correctly.
+
+**Status:** ✅ **done — full purchase flow confirmed working end-to-end on a real desktop viewport, reaching real Stripe checkout, with the Standard/Premium hiding mechanism confirmed correctly unaffected (unlike on mobile).**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
