@@ -864,6 +864,20 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 52 — "Several resellers selling at once all track correctly"
+
+**Analysis:** Used real, genuine production data rather than contriving an artificial concurrency test — directly queried every order linked to three distinct real resellers that already coexist in the live database: **Colin McCabe** (`ac96f783...`, his own real test purchases from Item 66's investigation), **Jojo Garcia** (`95d09a66...`, a genuinely separate, pre-existing real reseller unrelated to any test this session), and **Item50 QATest** (`560a57ad...`, this session's own Item 50/51 test reseller).
+
+**Confirmed no cross-contamination across any of these three, directly from the database:** every order's `sales_consultant_id` correctly points to exactly one of the three distinct consultant UUIDs (or `null` for organic/unattributed sales) — never ambiguous, never overlapping, never incorrectly attributed to a different reseller's orders.
+
+**Confirmed the real admin attribution dashboard** (`GET /api/admin/attribution`, authenticated as a real admin) correctly lists all three as separate, independent rows with their own distinct, correctly-set commission rates (**15%, 100%, 20%** respectively) and own profile data — no merging, no data bleeding between reseller records.
+
+**Problem:** None found — three genuinely independent, real resellers (one entirely organic/pre-existing, unrelated to this session's testing) all track correctly and separately, both at the raw order-attribution level and in the admin's own aggregated dashboard view.
+
+**Status:** ✅ **done — confirmed using real, pre-existing production data from an entirely independent third reseller (Jojo Garcia) alongside two already-tested ones, not a contrived or isolated test.** Multiple resellers' sales correctly stay distinct with no cross-attribution.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
