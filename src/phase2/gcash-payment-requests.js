@@ -24,6 +24,7 @@ const {
   buildGcashManualPaymentApprovedEmail,
   buildFrameOrderAdminEmail,
   buildPublicOrderAdminEmail,
+  buildPublicOrderCustomerEmail,
   buildSecondPurchaseDiscountEmail,
 } = require('./email-service');
 const { normalizePromoCode } = require('./attribution');
@@ -1859,6 +1860,24 @@ async function sendGcashRedeemedAdminAlert({ sendEmail, order, payload }) {
     html: buildPublicOrderAdminEmail(order),
     attachments,
   });
+
+  // Fix, Oct 2026 (checklist item 33, extended per "GCash should be
+  // operating as Stripe is" — Col, 31 Aug 2026): the GCash-redeemed path
+  // had no customer confirmation email either, same gap as the Stripe
+  // path. Own try/catch so a failure here never blocks the admin alert
+  // above or vice versa.
+  if (order.customer_email) {
+    try {
+      await sendEmail({
+        to: order.customer_email,
+        subject: `Your Tribute Times keepsake is ready - ${order.order_number}`,
+        html: buildPublicOrderCustomerEmail(order, process.env.APP_URL || ''),
+        attachments,
+      });
+    } catch (emailError) {
+      console.error('GCash order customer confirmation email failed:', emailError);
+    }
+  }
 }
 
 function throwStatus(statusCode, message) {

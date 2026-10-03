@@ -168,6 +168,40 @@ function buildPublicOrderAdminEmail(order) {
   `;
 }
 
+// Fix, Oct 2026 (checklist item 33): the Stripe/card public-purchase path
+// had no customer-facing "your order is confirmed" email at all — only
+// buildPublicOrderAdminEmail() above (an internal notification to Col) and
+// the unrelated second-purchase discount email ever fired. A customer's
+// only way to reach their keepsake was the post-Stripe browser redirect,
+// with no fallback if that redirect didn't complete (closed tab, phone
+// interruption, browser crash). This gives every real customer a durable,
+// resendable link back to their own paid order (same success-page URL the
+// redirect itself uses, GET /api/public/orders/:orderId — already proven
+// in item 37's testing to have no expiry and to work regardless of
+// elapsed time), so losing the redirect doesn't mean losing the keepsake.
+function buildPublicOrderCustomerEmail(order, appUrl) {
+  const product = productLabel(order.product_tier);
+  const delivery = order.delivery_option ? ` with ${deliveryLabel(order.delivery_option)} delivery` : '';
+  const total = Number(order.total_amount_nzd || 0).toFixed(2);
+  const baseUrl = appUrl ? String(appUrl).replace(/\/$/, '') : '';
+  const orderUrl = `${baseUrl}/public?checkout=success&order=${encodeURIComponent(order.id)}`;
+
+  return wrapBrandedEmail({
+    heading: 'Your Keepsake Is Ready',
+    appUrl,
+    bodyHtml: `
+    <p>Hi ${escapeHtml(order.customer_name || 'there')},</p>
+    <p>Thank you for your order! Your payment for <strong>${escapeHtml(product)}${escapeHtml(delivery)}</strong> (NZ$${escapeHtml(total)}) has been received, and your personalised keepsake newspaper is ready.</p>
+    <p><strong>Order number:</strong> ${escapeHtml(order.order_number || '')}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+      <tr><td>
+        <a href="${escapeHtml(orderUrl)}" style="display:inline-block;background:#8A6A1F;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:bold;">View &amp; Download Your Keepsake</a>
+      </td></tr>
+    </table>
+    <p>Keep this email — this link will always take you back to your keepsake, so you can download it again any time.</p>`,
+  });
+}
+
 function buildSecondPurchaseDiscountEmail({ customerName, code, discountPercent, validUntil, appUrl }) {
   const expiry = validUntil
     ? new Date(validUntil).toLocaleDateString('en-NZ', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -393,6 +427,7 @@ module.exports = {
   buildDjWelcomeEmail,
   buildSubscriptionActiveEmail,
   buildPublicOrderAdminEmail,
+  buildPublicOrderCustomerEmail,
   buildSecondPurchaseDiscountEmail,
   buildGcashPromoApprovedEmail,
   buildGcashPaymentRejectedEmail,

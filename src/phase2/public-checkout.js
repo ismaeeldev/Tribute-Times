@@ -14,7 +14,7 @@ const { PHASE2_CONFIG } = require('./config');
 const { getNextOrderNumber } = require('./order-number');
 const { saveKeepsakeRecord, updateKeepsakeRecord } = require('./save-keepsake');
 const { generatePdfFromHtml } = require('./pdf-service');
-const { buildPublicOrderAdminEmail, buildSecondPurchaseDiscountEmail } = require('./email-service');
+const { buildPublicOrderAdminEmail, buildPublicOrderCustomerEmail, buildSecondPurchaseDiscountEmail } = require('./email-service');
 const { resolvePaidOrderAttribution } = require('./attribution');
 const { tryRedeemGcashPaidPromoCode } = require('./gcash-payment-requests');
 const { issueSecondPurchaseDiscountCode, SECOND_PURCHASE_DISCOUNT_PERCENT } = require('./second-purchase-discount');
@@ -850,8 +850,14 @@ async function reconcilePublicOrderPaymentFromSession({ stripe, supabase, sendEm
   }
 
   if (sendEmail) {
+    // Bug fix (found verifying the item 33 fix below): this was declared
+    // inside the admin-email try block, so the new customer-email block
+    // underneath threw ReferenceError: attachments is not defined on
+    // every real paid order — caught by its own try/catch so it never
+    // surfaced as a user-facing failure, but the customer confirmation
+    // email was silently never sent. Hoisted out so both blocks share it.
+    let attachments = [];
     try {
-      let attachments = [];
       try {
         const pdf = await generatePdfFromHtml({
           html: updatedOrder.keepsakes?.rendered_html || order.keepsakes?.rendered_html || '',
@@ -873,6 +879,25 @@ async function reconcilePublicOrderPaymentFromSession({ stripe, supabase, sendEm
       });
     } catch (emailError) {
       console.error('Public order admin email failed:', emailError);
+    }
+
+    // Fix, Oct 2026 (checklist item 33): the customer previously received
+    // no confirmation of any kind for a card purchase — only this internal
+    // admin alert above. Sent as its own try/catch (not nested inside the
+    // admin-email one) so a failure here never blocks or gets blocked by
+    // the admin notification; reuses the same PDF attachment already
+    // generated above rather than rendering it twice.
+    if (updatedOrder.customer_email) {
+      try {
+        await sendEmail({
+          to: updatedOrder.customer_email,
+          subject: `Your Tribute Times keepsake is ready - ${updatedOrder.order_number}`,
+          html: buildPublicOrderCustomerEmail(updatedOrder, process.env.APP_URL || ''),
+          attachments,
+        });
+      } catch (emailError) {
+        console.error('Public order customer confirmation email failed:', emailError);
+      }
     }
   }
 
