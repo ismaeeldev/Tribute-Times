@@ -759,6 +759,23 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 45 — "Weather panel shows real data"
+
+**Analysis:** Found a dedicated, real, already-hardened module for exactly this (`historical-weather.js`) — confirmed via its own code comment this was a direct prior client-reported fix (10 Aug 2026: "the weather panel was AI-composed seasonal-sounding text... rather than actual recorded weather"). Calls the real Open-Meteo historical weather archive API with the keepsake's exact date and a representative city per supported country, returning genuinely recorded temperature and conditions — not AI-invented text.
+
+**Confirmed live, directly, three separate ways:**
+1. **Called the real function directly** against a known historical date (11 April 1963, New Zealand) — got back real recorded data: `{"icon":"🌦️","temp":"17","condition":"Drizzle","season":"Autumn","source":"Open-Meteo Historical Weather API","isLive":true}`.
+2. **Tested every real edge case for clean fallback** — a pre-1940 date (before Open-Meteo's archive coverage begins), a future date (no archive data yet), and an unsupported/fictional country all correctly returned `null` with no crash, confirmed via direct calls.
+3. **Cross-validated against a real keepsake already generated earlier this session** (Item 41's Golden Anniversary test, 20 March 1976, New Zealand, which displayed "Autumn in New Zealand: Overcast, around 19°C") — calling the real weather function directly for that exact same date returned `{"condition":"Overcast","temp":"19",...}`, an **exact match**, confirming the real keepsake generation pipeline is genuinely using this live data end-to-end, not just that the function works in isolation.
+
+**Confirmed the integration itself is correctly wired and safe** (`tribute-times-server-update.js:371-377`): real weather is fetched and overwrites any AI-generated placeholder content only when successfully returned; any failure (API down, unsupported country, out-of-range date) is caught and leaves existing content untouched rather than crashing the whole keepsake generation.
+
+**Problem:** None found — this is a genuinely well-built, already-fixed feature using a real external data source, confirmed working end-to-end with live data, not assumed from the code alone.
+
+**Status:** ✅ **done — confirmed via live calls to the real weather API, all edge cases, and cross-validated against an actual previously-generated keepsake with an exact data match.**
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
