@@ -894,6 +894,22 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 54 — "Credits can't be used once they run out"
+
+**Analysis:** Confirmed a real, genuine server-side guard exists and runs BEFORE generation even starts (`tribute-times-server-update.js:258-263`): `if (Number(florist.station.florist_credit_balance || 0) <= 0) { return res.status(402).json({ error: 'No florist credits remaining. Buy another pack to continue.' }); }` — a proper HTTP 402 ("Payment Required") status with a clear, specific message, not a generic failure.
+
+**Tested the exact real guard condition directly against every meaningful edge case**, rather than contriving a live test that would require either guessing a real florist's password or permanently depleting a real production account's balance (avoided as unnecessarily destructive, consistent with this session's standing discipline of not creating irreversible real-data changes when an equally decisive non-destructive test exists): balance `0` → correctly blocked; a defensive negative balance (should never legitimately occur, tested anyway) → correctly blocked; a missing/`null` balance → correctly blocked (fails safe, doesn't default to "unlimited"); a genuine positive balance → correctly allowed through. All four match the real, exact, verbatim condition from the live code, not a reimplementation.
+
+**Confirmed this is the single, sufficient enforcement point** — searched the entire codebase for every place credits are checked against zero; only this one exists, and confirmed earlier (Item 53) that the only place credits are ever consumed is immediately after this exact same guard in the same function — so there's no other code path that could bypass it.
+
+**Confirmed the error reaches the florist cleanly, not as a raw crash:** traced the real frontend call (`form-template.html:3300-3324`, the same shared `/api/generate` call used by every edition) — uses the same generic, already-proven-working `if (!response.ok) throw new Error(result.error || 'Generation failed')` pattern confirmed correct for every other error case tested this session, meaning the real, specific "No florist credits remaining..." message would display correctly to the florist, not a vague fallback.
+
+**Problem:** None found — the guard is real, correctly placed, correctly fails safe on edge cases, and its error message reaches the user cleanly.
+
+**Status:** ✅ **done — confirmed via direct testing of the exact real guard condition across every meaningful edge case, plus confirmation this is the sole enforcement point with no bypass and that its error message reaches the florist cleanly.** Did not deplete a real florist account's balance to test this live, since the guard logic itself (not a live UI click) is what determines the outcome, and testing it directly is equally decisive without the unnecessary, irreversible side effect.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
