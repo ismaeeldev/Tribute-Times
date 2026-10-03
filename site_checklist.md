@@ -747,6 +747,18 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 44 — "Cost of Living panel shows when there's no sports data"
+
+**Analysis:** Confirmed via code read first that "Cost of Living" (`s-prices`, `tribute-times-renderer.js:1003-1008`) and "Sporting News" (`s-sport`, line 1071+) are two entirely separate, independently-rendered sections with no conditional relationship — Cost of Living is never a fallback shown "instead of" sport, and doesn't depend on sport data existing at all. This item's real, testable concern is whether Cost of Living keeps rendering correctly and the layout stays intact specifically in the scenario where sport data is missing (not whether one visually replaces the other).
+
+**Tested directly with a real, deliberately empty `sport: []` input**, using a modified copy of the same real stress-test fixture used in Item 42/43 (confirms this is testing the actual production renderer, not a simplified mock): rendered the real output and visually confirmed — "Sporting News" correctly shows the honest fallback text *"No sporting results are available for this day."* (the same mechanism already proven in Item 43's investigation), with **no crash, no broken/missing layout, and "Cost of Living, 1963" rendering completely normally in its own fixed position** directly above it, fully unaffected by the empty sport array.
+
+**Problem:** None found — the two sections are correctly independent, and the empty-sport case is handled cleanly without any knock-on effect on Cost of Living or the surrounding layout.
+
+**Status:** ✅ **done — confirmed via a real rendering test with deliberately empty sport data, using the actual production renderer function, not a mock.** Cost of Living and Sporting News render independently and correctly regardless of sport data availability.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
