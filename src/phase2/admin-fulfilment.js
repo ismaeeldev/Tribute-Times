@@ -8,6 +8,20 @@ const { normalizePromoCode } = require('./attribution');
 const { normalizeCountry } = require('./famous-birthdays');
 const { buildPostedOrderCustomerEmail, buildPublicOrderCustomerEmail } = require('./email-service');
 const { buildBaseWholesaleCode, resolveAvailableCode, createUniqueWholesaleCode, createUniqueAttributionCode } = require('./wholesale-code');
+const { PHASE2_CONFIG } = require('./config');
+
+// Same local escapeHtml() every other phase2 file defines for itself
+// (email-service.js, gcash-payment-requests.js, public-checkout.js) —
+// not exported/shared anywhere in this codebase, so matching that
+// existing convention rather than introducing a new shared import.
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Security fix (Col McCabe, 7 Aug 2026 — "Admin session token exposed on
 // public site"): admin auth previously fell back to sharing JWT_SECRET
@@ -2378,6 +2392,36 @@ function registerAdminFulfilmentRoutes(app, { supabase, sendEmail, stripe }) {
           return res.status(503).json({ error: 'Sign-ups are not open yet — please check back soon.' });
         }
         throw error;
+      }
+
+      // Fix, Oct 2026 (checklist item 40): no notification of any kind was
+      // sent when a reseller/florist application came in — confirmed via
+      // an exhaustive search of every sendEmail() call in this file during
+      // a full checklist audit (only one existed, unrelated to sign-ups).
+      // The real, already-hardened dashboard badge (refreshResellerRequestsBadge(),
+      // fixed 3 Sept 2026) remains the primary indicator; this adds the
+      // email channel alongside it, reusing the same adminAlertEmail
+      // pattern already proven working for sale notifications (item 39).
+      // Fire-and-forget with its own try/catch — a failed notification
+      // email must never fail the actual sign-up, which has already
+      // succeeded by this point.
+      if (sendEmail) {
+        const applicantName = [insertRow.first_name, insertRow.surname].filter(Boolean).join(' ');
+        sendEmail({
+          to: PHASE2_CONFIG.adminAlertEmail,
+          subject: `New ${insertRow.partner_type} sign-up request - ${applicantName}`,
+          html: `
+            <h2>New reseller/partner sign-up</h2>
+            <p><strong>Type:</strong> ${escapeHtml(insertRow.partner_type)}</p>
+            <p><strong>Name:</strong> ${escapeHtml(applicantName)}</p>
+            ${insertRow.business_name ? `<p><strong>Business:</strong> ${escapeHtml(insertRow.business_name)}</p>` : ''}
+            <p><strong>Email:</strong> ${escapeHtml(insertRow.email)}</p>
+            <p><strong>Phone:</strong> ${escapeHtml(insertRow.phone || '')}</p>
+            <p>Review and approve in the admin dashboard's Reseller Requests screen.</p>
+          `,
+        }).catch((emailError) => {
+          console.error('Reseller signup notification email failed:', emailError);
+        });
       }
 
       return res.json({ success: true, id: data.id });
