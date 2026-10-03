@@ -288,6 +288,79 @@ function registerGcashPaymentRoutes(app, { supabase, sendEmail, authAdmin, stati
     }
   });
 
+  // Fix, Oct 2026 (checklist item 38): no way existed to resend the GCash
+  // approval email, which is the single real delivery mechanism for a
+  // paid GCash customer's one-time redeem code — the most urgent real
+  // case found for this gap, since (unlike the Stripe path) there is no
+  // browser-redirect fallback at all on GCash. Lets an admin optionally
+  // correct the customer's email (if it was typo'd) and re-sends the
+  // exact same approval email, reusing the already-generated code rather
+  // than creating a new one (a customer should never need a second code
+  // just because the first email didn't arrive).
+  app.post('/api/admin/gcash-payments/:id/resend', authAdmin, async (req, res) => {
+    try {
+      const request = await loadGcashPaymentRequest(supabase, req.params.id);
+      if (request.status !== 'approved' || !request.generated_promo_code_id) {
+        throwStatus(400, 'Only an already-approved GCash request with a generated code can be resent.');
+      }
+
+      const correctedEmail = String(req.body?.email || '').trim().toLowerCase();
+      let targetRequest = request;
+      if (correctedEmail && correctedEmail !== request.customer_email) {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('gcash_payment_requests')
+          .update({ customer_email: correctedEmail })
+          .eq('id', request.id)
+          .select('*')
+          .single();
+        if (updateError || !updatedRequest) {
+          throw new Error(updateError?.message || 'Unable to update the request email.');
+        }
+        targetRequest = updatedRequest;
+
+        // Bug fix (found verifying this fix): the generated code's own
+        // locked_customer_email (checked at redemption time,
+        // validateGcashPaidPromoForPayload() below) was left pinned to
+        // the OLD email — correcting only the request's email would
+        // resend to the right address but leave the customer unable to
+        // actually redeem the code, since their real email wouldn't
+        // match the stale lock.
+        await supabase
+          .from('promo_codes')
+          .update({ locked_customer_email: correctedEmail })
+          .eq('id', targetRequest.generated_promo_code_id);
+      }
+
+      const promo = await loadPromoCodeById(supabase, targetRequest.generated_promo_code_id);
+
+      let emailSent = false;
+      if (sendEmail) {
+        try {
+          emailSent = await sendEmail({
+            to: targetRequest.customer_email,
+            subject: 'Your Tribute Times GCash promo code',
+            html: buildGcashPromoApprovedEmail({
+              request: targetRequest,
+              promoCode: promo,
+              appUrl: process.env.APP_URL || '',
+            }),
+          });
+        } catch (emailError) {
+          console.error('GCash resend email failed:', emailError);
+        }
+      }
+
+      return res.json({
+        request: buildGcashRequestResponse(targetRequest, promo),
+        promoCode: promo,
+        emailSent: Boolean(emailSent),
+      });
+    } catch (error) {
+      console.error('Admin GCash resend error:', error);
+      return res.status(error.statusCode || 400).json({ error: error.message || 'Unable to resend GCash confirmation.' });
+    }
+  });
+
   app.patch('/api/admin/gcash-payments/:id/reject', authAdmin, async (req, res) => {
     try {
       const request = await loadGcashPaymentRequest(supabase, req.params.id);

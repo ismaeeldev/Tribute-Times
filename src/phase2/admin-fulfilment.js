@@ -6,7 +6,7 @@ const { generatePdfFromHtml, sanitizeFilenamePart } = require('./pdf-service');
 const { DELIVERY_OPTIONS, QUEUE_STATUS, SOURCE_PORTALS, WHOLESALE_DISCOUNT_RATE } = require('./constants');
 const { normalizePromoCode } = require('./attribution');
 const { normalizeCountry } = require('./famous-birthdays');
-const { buildPostedOrderCustomerEmail } = require('./email-service');
+const { buildPostedOrderCustomerEmail, buildPublicOrderCustomerEmail } = require('./email-service');
 const { buildBaseWholesaleCode, resolveAvailableCode, createUniqueWholesaleCode, createUniqueAttributionCode } = require('./wholesale-code');
 
 // Security fix (Col McCabe, 7 Aug 2026 — "Admin session token exposed on
@@ -2194,6 +2194,69 @@ function registerAdminFulfilmentRoutes(app, { supabase, sendEmail, stripe }) {
     } catch (error) {
       console.error('Admin status update error:', error);
       return res.status(error.statusCode || 400).json({ error: error.message || 'Unable to update status.' });
+    }
+  });
+
+  // Fix, Oct 2026 (checklist item 38): no mechanism existed anywhere for
+  // Col or a customer to correct a typo'd checkout email and get the
+  // confirmation re-sent — a real, confirmed gap found during the site
+  // checklist audit, most urgent for the GCash path specifically (the
+  // approval email carrying the one-time redeem code is a paid GCash
+  // customer's ONLY way to unlock their keepsake). Lets an admin correct
+  // customer_email on a real order and immediately re-sends the same
+  // order-confirmation email the paid-order flow already sends
+  // (buildPublicOrderCustomerEmail(), added for item 33), to the
+  // corrected address — reuses that exact template rather than building a
+  // second one.
+  app.post('/api/admin/orders/:orderId/resend-confirmation', authAdmin, async (req, res) => {
+    try {
+      const newEmail = String(req.body?.email || '').trim().toLowerCase();
+      if (!newEmail || !newEmail.includes('@')) {
+        return res.status(400).json({ error: 'A valid email address is required.' });
+      }
+
+      // Not loadFulfilmentOrderById — that's scoped to needs_fulfilment=true
+      // (the physical print queue) and would 404 on every digital-only
+      // order, which is most real public orders. This needs to work for
+      // any paid order regardless of product tier.
+      const { data: order, error: loadError } = await supabase
+        .from('orders')
+        .select('id, order_number, customer_email, payment_status')
+        .eq('id', req.params.orderId)
+        .maybeSingle();
+      if (loadError) throw loadError;
+      if (!order) return res.status(404).json({ error: 'Order not found.' });
+      if (order.payment_status !== 'paid') {
+        return res.status(400).json({ error: 'Only paid orders can have their confirmation resent.' });
+      }
+
+      const { data: updatedOrder, error: updateError } = await supabase
+        .from('orders')
+        .update({ customer_email: newEmail })
+        .eq('id', order.id)
+        .select('*')
+        .single();
+      if (updateError || !updatedOrder) {
+        throw new Error(updateError?.message || 'Unable to update the order email.');
+      }
+
+      let emailSent = false;
+      if (sendEmail) {
+        try {
+          emailSent = await sendEmail({
+            to: newEmail,
+            subject: `Your Tribute Times keepsake is ready - ${updatedOrder.order_number}`,
+            html: buildPublicOrderCustomerEmail(updatedOrder, process.env.APP_URL || ''),
+          });
+        } catch (emailError) {
+          console.error('Admin resend-confirmation email failed:', emailError);
+        }
+      }
+
+      return res.json({ order: buildAdminOrderResponse(updatedOrder), emailSent: Boolean(emailSent) });
+    } catch (error) {
+      console.error('Admin resend-confirmation error:', error);
+      return res.status(error.statusCode || 400).json({ error: error.message || 'Unable to resend confirmation.' });
     }
   });
 
