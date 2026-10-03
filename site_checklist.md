@@ -834,6 +834,22 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+## Section: Resellers & admin (items 50–56)
+
+### ITEM 50 — "New reseller can sign up and gets their code"
+
+**Analysis:** Full real, live E2E test through the entire real flow, not just a code read. Submitted a genuine sign-up via the real public endpoint (`POST /api/public/reseller-signup`, reachable at `/join`, confirmed deliberately requires human admin review before becoming live — "Would come to Jhe-Ann or me for approval first" per the endpoint's own code comment, Col's own stated design intent) with real applicant data.
+
+**Confirmed the submission correctly appears in the real admin pending-requests list** (`GET /api/admin/reseller-requests?status=pending`, authenticated as a real admin) with every field accurate.
+
+**Approved it via the real admin endpoint and confirmed a genuinely working code was issued, not just a success message:** the response directly returned `"code":"item50Q"`, `"codeGenerated":true`. Verified this independently against the real database row it created — `code_type: "consultant_demo"`, `active: true`, `consultant_id` correctly linked to the new reseller's own consultant record. This is the real, same code-type already investigated in Item 14 (no discount capability, by design) — but that's a separate, already-documented concern; this item is specifically about the reseller receiving a genuine, working, attributable code, which is confirmed true.
+
+**Problem:** None found in the sign-up-to-code pipeline itself. Noting, consistent with Item 40's finding, that the new reseller is not automatically emailed their code — Col must deliver it manually after approving, since no notification email exists on this path either (confirmed via the same exhaustive `sendEmail()` search already done for Item 40 — this approval endpoint has none).
+
+**Status:** ✅ **done — confirmed via a full real E2E test from public submission through to a genuinely issued, correctly-linked, functional code.** Noting (not re-flagging as a new bug, since already covered by Item 40's broader finding) that code delivery to the reseller is still a manual, outside-the-system step today.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
