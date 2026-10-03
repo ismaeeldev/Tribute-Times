@@ -806,6 +806,20 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 48 — "Footer shows © Tribute Times 2026 · thetributetimes.com"
+
+**Analysis:** Checked the real footer markup directly across all three renderer variants (standard, memorial, anniversary/couple — confirmed via Item 41's testing these are genuinely different templates, not just relabeled copies) — all three are identical and consistent with each other, but **do not match this checklist item's literal spec**:
+
+- **Real footer text:** `"The Tribute Times — tributetimes.co.nz"` (confirmed via direct code read of all three renderers, and visually confirmed in every real keepsake screenshot generated throughout this session — Items 41, 44, 45, 46).
+- **No `©` copyright symbol or year** appears anywhere in the footer.
+- **Domain is `tributetimes.co.nz`, not `thetributetimes.com`** — and confirmed this is genuinely the real, live, currently-deployed domain (`APP_URL=https://tributetimes.co.nz` in the live `.env`), not a leftover placeholder pointing to the wrong place.
+
+**Problem:** Real, direct mismatch between the checklist's specified footer text and what actually renders — but genuinely ambiguous which side is "correct" without asking Col: either (a) the checklist item itself has an outdated/incorrect domain and copyright line in mind, and the current footer is fine as-is, or (b) Col genuinely wants the footer updated to include a copyright notice and year, and/or the checklist's `.com` domain reflects an intended future rebrand/domain change not yet reflected in the code. Given the real site is currently and consistently deployed at `.co.nz` everywhere (not just the footer — `APP_URL` itself), changing just the footer's domain without the actual site moving would create a real, broken, inconsistent reference.
+
+**Status:** 🔶 **flagged, not changed — real, confirmed mismatch between the checklist's exact wording and the current, consistent footer across all three keepsake templates.** This needs Col's clarification on whether `thetributetimes.com` is the correct, intended domain (in which case this is a wider rebrand/domain question, not just a footer text tweak) or whether the checklist item's own wording is simply imprecise and the current `.co.nz` footer should be left as-is, optionally with a `©` and year added.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
