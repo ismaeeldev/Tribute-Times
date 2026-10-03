@@ -776,6 +776,20 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 46 — "Famous birthdays show the right country, not US by default"
+
+**Analysis:** Found a real, dual-mode design in `famous-birthdays.js`/`tribute-times-ai-prompt.js:296-324` — a curated, admin-approved, Wikipedia-sourced database path (used only when 3+ verified entries exist for the exact date/country), and an AI-generation fallback path explicitly prompted to "prefer people famous in or relevant to ${country}."
+
+**Checked the real production database first:** queried `famous_birthdays` directly — **zero rows exist in production**, confirming the curated path is never actually active today; every real keepsake currently uses the AI-fallback path exclusively. Found a real, latent risk in the unused curation-import tooling, worth noting separately: `inferMainPublicCountry()` (`famous-birthdays.js:123-138`, only called from the one-time `scripts/import-famous-birthdays.js`) defaults to `'United States'` when a bio's text doesn't match any country keyword — if this script is ever run to populate the table, any ambiguous bio would get silently mis-tagged US rather than correctly left unclassified. Not a live bug today (the table is empty, this code path isn't running), but worth Col/dev knowing about before that import script is ever used for real.
+
+**Tested the real, actually-active path live** — generated a real Philippines keepsake (12 June 1990) and confirmed the "Born On This Day" section correctly includes a genuinely Filipino figure (**Vic Sotto — Filipino, actor and television host, born 1952**) alongside two American figures (George H.W. Bush, Dave Franco) — exactly matching the prompt's own wording of "prefer," not "exclusively use." This is NOT defaulting to US-only content; a real country-relevant figure is present. Also independently confirmed PHP currency (₱) and the Philippine Stock Exchange index ("PSEi") correctly appear in the market ticker for this country, consistent with correct country-awareness throughout the keepsake, not just the birthdays section.
+
+**Problem:** None found in the live, actually-used path — it correctly includes country-relevant figures, not a US-only default. The real risk found (`inferMainPublicCountry()`'s US fallback) is dormant, confined to an unused import script, and doesn't affect any real keepsake today.
+
+**Status:** ✅ **done for the real, live path — confirmed via a real generated Philippines keepsake showing a genuinely local figure, not a US default.** 🔶 Noted a dormant US-default risk in the unused curation-import script for awareness, not an active bug since the curated database is currently empty and that code path never runs in production.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
