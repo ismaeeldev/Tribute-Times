@@ -2086,6 +2086,7 @@
         loadAttribution().catch(() => {});
         loadBirthdays().catch(() => {});
         refreshResellerRequestsBadge().catch(() => {});
+        startIdleTimer();
       } catch {
         showLogin();
       }
@@ -2151,6 +2152,7 @@
         // were pending requests waiting without checking that screen
         // manually first.
         refreshResellerRequestsBadge().catch(() => {});
+        startIdleTimer();
       } catch (err) {
         setLoginMessage(err.message, true);
       } finally {
@@ -3999,7 +4001,83 @@
       document.getElementById('admin-password').value = '';
       syncPasswordToggle();
       showLogin();
+      stopIdleTimer();
     }
+
+    /* ── IDLE TIMEOUT ──
+       Fix, Oct 2026 (checklist item 55): the admin session cookie/JWT are
+       both genuinely valid for 30 days with no inactivity-based logout at
+       all, confirmed via a full checklist audit — a real risk since this
+       dashboard shows real customer emails, order totals, and reseller
+       commission rates (per items 63-64). This adds a client-side-only
+       idle timer: 25 minutes of no activity shows a warning with a
+       60-second countdown to stay logged in; no response logs out for
+       real (clears the server-side cookie via the same logout() already
+       used elsewhere) and returns to the login screen. Does NOT shorten
+       the underlying 30-day token/cookie itself — a laptop closed and
+       reopened within 25 minutes stays logged in, matching how most
+       "idle timeout" UX works elsewhere. Purely in-memory (setTimeout),
+       so it naturally resets on every page reload/fresh boot — no
+       localStorage/sessionStorage involved. */
+    const IDLE_TIMEOUT_MS = 25 * 60 * 1000;
+    const IDLE_WARNING_MS = 60 * 1000;
+    let idleTimer = null;
+    let idleWarningTimer = null;
+    let idleWarningEl = null;
+
+    function clearIdleTimers() {
+      if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+      if (idleWarningTimer) { clearTimeout(idleWarningTimer); idleWarningTimer = null; }
+    }
+
+    function hideIdleWarning() {
+      if (idleWarningEl) { idleWarningEl.remove(); idleWarningEl = null; }
+    }
+
+    function showIdleWarning() {
+      if (idleWarningEl) return;
+      idleWarningEl = document.createElement('div');
+      idleWarningEl.setAttribute('role', 'alertdialog');
+      idleWarningEl.setAttribute('aria-live', 'assertive');
+      idleWarningEl.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;background:#2c2a1f;color:#f7f3e3;padding:16px 20px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);max-width:320px;font-size:0.9rem;';
+      idleWarningEl.innerHTML = '<strong>Still there?</strong><div style="margin:6px 0 10px;">You will be logged out soon due to inactivity.</div>';
+      const stayBtn = document.createElement('button');
+      stayBtn.type = 'button';
+      stayBtn.textContent = "I'm still here";
+      stayBtn.style.cssText = 'background:#8A6A1F;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;';
+      stayBtn.addEventListener('click', resetIdleTimer);
+      idleWarningEl.appendChild(stayBtn);
+      document.body.appendChild(idleWarningEl);
+    }
+
+    function startIdleTimer() {
+      clearIdleTimers();
+      idleTimer = setTimeout(() => {
+        showIdleWarning();
+        idleWarningTimer = setTimeout(() => {
+          hideIdleWarning();
+          logout();
+        }, IDLE_WARNING_MS);
+      }, IDLE_TIMEOUT_MS - IDLE_WARNING_MS);
+    }
+
+    function resetIdleTimer() {
+      hideIdleWarning();
+      if (document.body.classList.contains('logged-in')) {
+        startIdleTimer();
+      }
+    }
+
+    function stopIdleTimer() {
+      clearIdleTimers();
+      hideIdleWarning();
+    }
+
+    ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach((eventName) => {
+      window.addEventListener(eventName, () => {
+        if (document.body.classList.contains('logged-in')) resetIdleTimer();
+      }, { passive: true });
+    });
 
     /* ── PASSWORD TOGGLE ── */
     function togglePasswordVisibility() {
