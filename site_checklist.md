@@ -878,6 +878,22 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 53 — "Florist 10 free credits work and the balance goes down"
+
+**Analysis:** Found a real, precise, worth-clarifying discrepancy between this item's "10" and what the system actually does — confirmed via code AND real production data, not assumed.
+
+**The real starting-balance default is 30, not 10** — confirmed via the admin's own florist-creation form (`admin.html:4523`, `<input id="modal-florist-credits" ... value="30" required />`, a visible, editable field Col sees and can change every time he creates a florist account) and the matching server-side default (`admin-fulfilment.js:1792`, `Number(req.body?.initial_credit_balance || 30)`). Checked every real florist account in production: all three start from either 30 or 50, never 10.
+
+**Found the real, likely source of the "10" in this checklist item** — it's genuinely a different, separate number in the system: `florist_low_credit_threshold`, which defaults to **10** (`tribute-times-server-update.js:515`, `Number(floristAccount.florist_low_credit_threshold || 10)`) and is confirmed as **10** on every real florist account checked. This is the balance level that triggers a real low-credit warning email to the florist (`buildFloristLowCreditEmail()`), a genuinely different concept from the starting balance. It's easy to see how "10" could be remembered as "the free credits number" when it's actually the warning threshold.
+
+**"The balance goes down" — confirmed correct and already proven true in real production data, not just by reading the decrement code:** one real florist account ("Test Florist") currently sits at **29** credits — directly confirming a real keepsake generation by this florist correctly decremented their balance by exactly 1 from a starting 30, matching the decrement logic read directly from `tribute-times-server-update.js:514-522` (`nextBalance = ...florist_credit_balance - 1`).
+
+**Problem:** None in the actual decrement mechanism, which is confirmed correct. The real discrepancy is specifically in which number is "10" — the checklist's "10 free credits" doesn't match the real starting balance (30) but does exactly match the real low-credit warning threshold, strongly suggesting this item conflates two genuinely different real numbers rather than describing an actual bug.
+
+**Status:** ✅ **"balance goes down" confirmed correct via real production data (an actual florist account at 29/30, matching the real decrement logic exactly).** 🔶 Flagging the "10" discrepancy for Col to clarify — if he genuinely wants florists to start with 10 (not 30) free credits, that's a one-line default change (`admin-fulfilment.js:1792`/`:1866` and the admin form's own default value); if "10" was always meant to describe the low-credit warning level (which is already correctly 10), no change is needed at all.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
