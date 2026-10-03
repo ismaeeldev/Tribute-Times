@@ -86,8 +86,21 @@ function registerPublicCheckoutRoutes(app, { stripe, supabase, sendEmail }) {
       });
 
       const lineItems = buildLineItems(tier, delivery);
+      // Fix, Oct 2026 (checklist item 20): a campaign code's `country`
+      // restriction is meant to describe the CUSTOMER (where they are,
+      // what currency/price they saw), not where the physical keepsake
+      // ships — those can legitimately differ (e.g. an NZ-based customer
+      // shipping a printed keepsake to an overseas relative). Previously
+      // checked shippingCountry/country (the shipping-destination fields)
+      // here, which incorrectly rejected genuine NZ customers shipping
+      // overseas against an NZ-restricted code like CDMFREE. Now prefers
+      // the customer's own detected pricing country (the flag they picked
+      // on the checkout-country selector, same source already proven
+      // correct in Items 6/7), falling back to the old fields only if a
+      // pricing country was never sent (e.g. an older cached page).
+      const customerCountry = payload.pricingCountry || payload.shippingCountry || payload.country;
       const campaignCode = payload.promoCode
-        ? await resolveCampaignPromoCode(supabase, payload.promoCode, payload.shippingCountry || payload.country)
+        ? await resolveCampaignPromoCode(supabase, payload.promoCode, customerCountry)
         : null;
 
       const session = await stripe.checkout.sessions.create({

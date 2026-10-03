@@ -1906,7 +1906,13 @@ async function validateCheckoutPromoCode() {
   }
 
   try {
-    const country = document.getElementById('country')?.value || '';
+    // Fix, Oct 2026 (checklist item 20): this previously sent #country
+    // (the recipient's own country — unrelated to the customer's actual
+    // location/currency) rather than the customer's detected pricing
+    // country, so the pre-check could disagree with what checkout-session
+    // (the authoritative check) actually decides. Now uses the same
+    // pricing-country source as the real checkout payload.
+    const country = document.getElementById('checkout-country-select')?.value || '';
     const response = await fetch(`/api/public/promo/validate?code=${encodeURIComponent(code)}&country=${encodeURIComponent(country)}`);
     const result = await response.json();
     if (result.valid) {
@@ -2654,6 +2660,7 @@ function buildCheckoutPayload() {
     dateOfBirth,
     country,
     residenceCountry,
+    pricingCountry: document.getElementById('checkout-country-select')?.value || '',
     occasion: selectedOccasion || 'Birthday',
     senderName: senderName || 'The Tribute Times',
     stationName,
