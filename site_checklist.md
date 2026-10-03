@@ -910,6 +910,22 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 55 — "Admin needs a login and logs out after time away"
+
+**Analysis:** Two genuinely separate halves, tested independently.
+
+**"Needs a login" — confirmed correct, live, via real HTTP requests with no credentials:** every real admin endpoint tested (`/api/admin/reseller-requests`, `/api/admin/attribution`) correctly returned a real `401` with `{"error":"Not authenticated"}` when no cookie was sent at all, and a real `401` with `{"error":"Session expired"}` when a deliberately invalid/tampered token was sent — confirming the `jwt.verify()` check genuinely rejects bad tokens, not just missing ones.
+
+**"Logs out after time away" — does NOT hold, confirmed via direct code read of the real session configuration:** `ADMIN_TOKEN_EXPIRY = '30d'` and the cookie's own `maxAge` (`admin-fulfilment.js:24-25`) are both genuinely **30 days**, not a short idle-based timeout. Searched the entire admin UI for any client-side inactivity/idle-timeout mechanism (auto-logout after N minutes of no activity) — **none exists**. This means once Col logs in, he stays logged in on that browser for up to 30 days regardless of how long the tab sits open and unused, not "logged out after time away" in the sense most people would read that phrase (a short security timeout).
+
+**The cookie itself is otherwise correctly, deliberately hardened** (`httpOnly: true` — not readable by JavaScript, mitigating XSS token theft; `secure` in production — HTTPS-only; `sameSite: 'strict'` — a real, explained CSRF defence, per the code's own comment) — this is good security hygiene for what it covers, just not an idle-timeout.
+
+**Problem:** A real, genuine gap specifically on the "time away" half. Given the admin dashboard holds sensitive data (real customer emails, order totals, reseller commission rates — already established in Items 63-64's earlier investigation), a 30-day persistent login with no inactivity timeout is a real risk if the admin panel is ever used on a shared or public computer, or if a device with a saved session is lost/stolen.
+
+**Status:** ✅ **"needs a login" confirmed correct and solid** (proper 401s, correct rejection of invalid tokens, good cookie hardening). 🔴 **"logs out after time away" does not hold** — no idle-timeout exists; the real session lasts a full 30 days regardless of inactivity. Flagged for Col/product decision rather than changed here, since adding a real idle-timeout is a deliberate security/UX tradeoff (how long is "time away"? should it log out or just re-prompt for a password?) worth his explicit input, not a default I should silently pick.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
