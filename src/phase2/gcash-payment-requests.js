@@ -253,6 +253,13 @@ function registerGcashPaymentRoutes(app, { supabase, sendEmail, authAdmin, stati
           try {
             emailSent = await sendEmail({
               to: updatedRequest.customer_email,
+              // Fix, Oct 2026 (checklist item 30): Jhe-Ann (the real
+              // GCash payee) had no way to know a payment was approved
+              // without manually checking the admin dashboard. CCs her
+              // once PHASE2_CONFIG.gcashPayeeNotifyEmail is configured;
+              // empty by default (no CC) until Col confirms her real
+              // notification address.
+              ...(PHASE2_CONFIG.gcashPayeeNotifyEmail ? { cc: PHASE2_CONFIG.gcashPayeeNotifyEmail } : {}),
               subject: 'Your Tribute Times GCash promo code',
               html: buildGcashPromoApprovedEmail({
                 request: updatedRequest,
@@ -338,6 +345,9 @@ function registerGcashPaymentRoutes(app, { supabase, sendEmail, authAdmin, stati
         try {
           emailSent = await sendEmail({
             to: targetRequest.customer_email,
+            // Same Jhe-Ann CC as the approve endpoint (item 30 fix) —
+            // kept consistent so a resend doesn't silently drop it.
+            ...(PHASE2_CONFIG.gcashPayeeNotifyEmail ? { cc: PHASE2_CONFIG.gcashPayeeNotifyEmail } : {}),
             subject: 'Your Tribute Times GCash promo code',
             html: buildGcashPromoApprovedEmail({
               request: targetRequest,
