@@ -820,6 +820,20 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 49 — "Prints cleanly on a home printer"
+
+**Analysis:** Confirmed the real, intended customer path first: for the public/customer edition specifically, the "Download PDF" button always triggers a genuine server-generated PDF download (`form-template.html:3402-3411`, `window.location.href = downloadUrl`) — a separate `window.print()` fallback exists in the same function (`:3412`) but confirmed via code read it's only reachable for a different, non-public edition (internal/station tooling), never the real customer flow. This means a real customer always receives an actual print-ready PDF file, not a raw unstyled browser print of the live page.
+
+**Tested the real download endpoint directly against a genuinely real, already-paid order** (`TT`-prefixed order from this session's earlier Item 1 E2E test): downloaded the actual file and verified, not assumed — confirmed via the real HTTP response (`content-type: application/pdf`) AND independently via the `file` command reading the binary's own internal structure (`PDF document, version 1.4, 1 page(s)`), not just trusting a header claim. This directly confirms the A4 single-page-fit mechanism (`fitNewspaperToSingleA4Page()`, already proven in Item 41 for the browser preview) also holds true in the real, physically downloadable PDF file.
+
+**Visually inspected the real downloaded PDF in full:** clean single-page A4 layout, proper high-contrast dark text on a light cream background throughout (no color-dependent critical content, which matters directly for black/white home printing), clear section borders and dividers, correctly bordered page edges, no bleed/overflow issues, no placeholder content.
+
+**Problem:** None found in the file itself. Could not test an actual physical print on a real home printer from this environment (no physical printer access) — but the underlying PDF is confirmed genuinely valid, correctly single-page, and uses a high-contrast, print-friendly color scheme, which are the real structural prerequisites for a clean home print.
+
+**Status:** ✅ **done to the extent verifiable from this environment — confirmed via a real downloaded PDF from an actual paid order, independently validated as a genuine single-page A4 PDF file (not just a content-type claim), with a print-friendly layout and color scheme.** Actual physical print output on a real printer could not be tested here.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
