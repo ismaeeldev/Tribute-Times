@@ -8,6 +8,25 @@ This file is a separate, parallel log to `new_changes.md` — scoped specificall
 
 ---
 
+## FIXES APPLIED (2 Oct 2026, second pass) — real bugs found in the first audit pass, now fixed and verified
+
+Every item below was initially found as a real, confirmed gap during the first full read-through; all are now fixed, verified live, and committed. Each item's own section still documents the original finding in full — this is a quick index so the fix isn't buried.
+
+| Item | Bug found | Fix | Commit |
+|---|---|---|---|
+| 20 | Country-restricted codes checked shipping destination, not customer location — rejected genuine NZ customers shipping overseas | Added `pricingCountry` to the checkout payload, checked instead of shipping country | `6d06aa9` |
+| 24 | Unrecognized promo code silently charged full price, no error shown | Added an explicit "code not recognised" check before order creation | `a9a60a4` |
+| 30 | Jhe-Ann (real GCash payee) never notified of approvals | Added optional `cc` via `GCASH_PAYEE_NOTIFY_EMAIL`, off by default until Col confirms her address | `298708e` |
+| 33 | No order confirmation email existed for card/GCash purchases | Added `buildPublicOrderCustomerEmail()`, wired into both paid paths | `92888ae` |
+| 38 | No way to correct a typo'd email and resend | Added `/resend-confirmation` (orders) and `/resend` (GCash) admin endpoints | `161bfad` |
+| 40 | No notification when a reseller/florist signs up | Added a fire-and-forget admin email on submission | `ee44f5d` |
+| 47 | Dead mojibake button-text constants | Removed (confirmed unused) | `037cb36` |
+| 55 | No admin idle-timeout — 30-day persistent login | Added a 25-minute client-side idle timer with a warning + grace period | `1d69317` |
+| 57/58 | Standard/Premium tiers incorrectly visible (not selectable) on mobile | Scoped the mobile `!important` CSS override to exclude `.is-hidden` cards | `843cd72` |
+| 51 (correction) | "Stale promo message" was a re-test artifact, not a real bug | Corrected the record after precise re-verification | `ccd3d5c` |
+
+---
+
 ## 0. Process for every item (read this before adding/working a new one)
 
 For **every single item** on the 60-item list, in order (unless Col specifies a different order — he explicitly asked to start with item 17, TT50OFF):
