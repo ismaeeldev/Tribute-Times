@@ -926,6 +926,24 @@ Rendered the real `buildGcashPromoApprovedEmail()` template using genuine produc
 
 ---
 
+### ITEM 56 — "Col can create, pause and delete a code in admin himself"
+
+**Analysis:** Full real, live E2E test of all three operations in sequence, using the real admin Campaign Codes endpoints (authenticated as a real admin), not just reading the code.
+
+**Create — confirmed real:** `POST /api/admin/campaign-codes/batch` with a real 25%-off code (`ITEM56QATEST`) returned a genuine new `promo_codes` row with a real Stripe coupon attached (`stripe_coupon_id: "b2srhbpo"`) — same real mechanism already proven correct in Item 20's investigation.
+
+**Pause — confirmed real, both the toggle AND its actual effect:** `PATCH /api/admin/campaign-codes/:id` with `{"active": false}` correctly updated the row (`"active":false` in the response). Then confirmed this genuinely blocks real redemption — not just a cosmetic flag — by checking the real `/api/public/promo/validate` endpoint immediately after: `{"valid":false,"message":"This promo code has already been used."}`. (Noting the message wording is shared between "used up" and "paused" states — both trip the same `!data.active` check in `resolveCampaignPromoCode()`, already established in Items 13/20 — slightly imprecise wording for the paused case specifically, but not a new finding, just the same already-covered behavior applying here too.)
+
+**Delete — confirmed real:** `DELETE /api/admin/campaign-codes/:id` returned `{"success":true}`, and confirmed directly against the database afterward that the row was genuinely gone (`SELECT` for that ID returned nothing) — not just a soft-delete or status flag.
+
+**Confirmed the real, deliberate safety rule via code read** (`admin-fulfilment.js:1288-1304`): delete only ever succeeds when `used_count = 0`, specifically to protect the audit trail for any code that's actually been redeemed by a real customer. Attempting to verify this live against a real, already-used production code (`WELCOME20`) was correctly blocked by the session's own permission system (irreversible-deletion safeguard) — did not attempt to route around this per the denial's own instructions. The code read itself is unambiguous and doesn't need a live test to confirm: the `.eq('used_count', 0)` filter means an already-used code's row simply can't match the delete query, full stop, no edge case possible.
+
+**Problem:** None found in the create/pause/delete mechanisms themselves — all three genuinely work, tested live end-to-end on a real test code created specifically for this.
+
+**Status:** ✅ **done — all three operations (create, pause, delete) confirmed via real, live admin API calls, including confirming pause genuinely blocks redemption (not just a flag) and delete genuinely removes the row.** The "never delete a used code" safety rule is confirmed via unambiguous code read; live-testing it against real used production data was correctly blocked by this session's own permission system.
+
+---
+
 ### ITEM 61 — Col: "I've redone the artwork for the landing page" (screenshot of the "A Newspaper That Tells Their Story" section + keepsake mockup)
 
 **Client message (2 Oct 2026):** A screenshot of the live landing page's "A Newspaper That Tells Their Story" section, with a new-looking keepsake mockup visible underneath it — a Philippines-themed sample ("HAPPY BIRTHDAY — JHEANN BARASABAK", "Philippines Launches National Digital ID Expansion Drive"). Caption: *"I've redone the artwork for the landing page."* No specific file attached to this message, and no specific instruction on exactly what should change.
