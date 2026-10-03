@@ -71,21 +71,6 @@ function registerPublicCheckoutRoutes(app, { stripe, supabase, sendEmail }) {
         attribution.attributionSource = ATTRIBUTION_SOURCE.referral;
       }
 
-      const keepsakeId = payload.keepsakeId || await createKeepsakeIfNeeded(supabase, payload, attribution);
-      const tier = PRODUCT_TIERS[payload.productTier];
-      const delivery = payload.deliveryOption ? DELIVERY_OPTIONS[payload.deliveryOption] : null;
-      const orderNumber = await getNextOrderNumber(supabase);
-      const orderRecord = await createPendingOrder({
-        supabase,
-        keepsakeId,
-        orderNumber,
-        payload,
-        tier,
-        delivery,
-        attribution,
-      });
-
-      const lineItems = buildLineItems(tier, delivery);
       // Fix, Oct 2026 (checklist item 20): a campaign code's `country`
       // restriction is meant to describe the CUSTOMER (where they are,
       // what currency/price they saw), not where the physical keepsake
@@ -102,6 +87,42 @@ function registerPublicCheckoutRoutes(app, { stripe, supabase, sendEmail }) {
       const campaignCode = payload.promoCode
         ? await resolveCampaignPromoCode(supabase, payload.promoCode, customerCountry)
         : null;
+
+      // Fix, Oct 2026 (checklist item 24): a typed code that matches
+      // NEITHER a campaign discount code (campaignCode above) NOR a
+      // consultant attribution code (attribution.attributionSource,
+      // resolved just above from the same payload.promoCode) previously
+      // fell through silently on both paths and let checkout proceed at
+      // full price with zero explanation — the customer typed a code
+      // expecting a discount and got none, with no error shown. Every
+      // OTHER failure reason (expired, used up, wrong country) already
+      // throws a clear message via resolveCampaignPromoCode() above; this
+      // closes the one remaining silent case. Does NOT change the
+      // deliberate 11 Aug 2026 fix in attribution.js (a code that
+      // correctly matches an attribution-only code with no discount must
+      // never block payment) — this only fires when the code matched
+      // nothing recognizable at all. Checked here, before any keepsake/
+      // order row is created, so a rejected code never leaves behind an
+      // orphaned pending order.
+      if (payload.promoCode && !campaignCode && attribution.attributionSource !== ATTRIBUTION_SOURCE.promoCode) {
+        throwStatus(400, 'That promo code was not recognised. Check it and try again, or leave it blank to pay full price.');
+      }
+
+      const keepsakeId = payload.keepsakeId || await createKeepsakeIfNeeded(supabase, payload, attribution);
+      const tier = PRODUCT_TIERS[payload.productTier];
+      const delivery = payload.deliveryOption ? DELIVERY_OPTIONS[payload.deliveryOption] : null;
+      const orderNumber = await getNextOrderNumber(supabase);
+      const orderRecord = await createPendingOrder({
+        supabase,
+        keepsakeId,
+        orderNumber,
+        payload,
+        tier,
+        delivery,
+        attribution,
+      });
+
+      const lineItems = buildLineItems(tier, delivery);
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
