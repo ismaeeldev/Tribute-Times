@@ -1079,6 +1079,8 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 
 **Status:** 🚨 **PENDING — root cause found and fully confirmed with real evidence, nothing implemented.** Blocked on a Stripe Dashboard permission change only Col (or whoever controls that account) can make. Relayed to Col directly given the live urgency; tracked here as pending until the permission is fixed and the actual coupon fix can be built and tested.
 
+**Re-confirmed, 4 Oct 2026 (deep audit pass):** this session's own testing has all been against the local `sk_test_...` key (confirmed via `.env` — the `rk_live_...` key remains commented out by default, exactly as before). A direct, read-only check against the real live key (`stripe.coupons.list()`, no write attempted) confirms **this permission restriction is still live and unresolved right now**: *"Permission denied. The provided key 'rk_live_...hx5m' does not have the required permissions for this endpoint... Enabling Coupons Read ('coupon_read') permissions on this key would allow this request to continue."* — same account, same restricted key, same real blocker as originally found. This session's own item 20 fix (country-restriction checking shipping vs. pricing country) is a **separate, unrelated bug** from this one — fixing it does not touch or resolve this live-key permission issue. CDMFREE and any future admin-created discount code remain genuinely broken on the live production site until Col (or whoever controls the Stripe account) grants Coupons Read/Write permission to the live key, exactly as originally documented.
+
 ---
 
 ### ITEM 63 — Col: "Explain what this information is and how I use it??" (Dashboard Overview screenshot)
