@@ -1395,6 +1395,7 @@
                     <th>Address</th>
                     <th>Tier</th>
                     <th>Delivery</th>
+                    <th>Amount</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th>Actions</th>
@@ -2234,6 +2235,7 @@
             <td><div class="addr">${escapeHtml(order.shippingAddress || 'Digital order')}</div></td>
             <td style="white-space:nowrap;font-weight:500;">${escapeHtml(order.productTierLabel || order.productTier || '')}</td>
             <td style="white-space:nowrap;font-size:.83rem;color:var(--muted);">${escapeHtml(order.deliveryOptionLabel || 'Standard')}</td>
+            <td style="white-space:nowrap;font-weight:600;">${order.totalAmountNzd != null ? `${escapeHtml(order.currencyCode || 'NZD')} $${Number(order.totalAmountNzd).toFixed(2)}` : '—'}</td>
             <td>
               <div class="status-cell">
                 <span class="status-pill ${escapeHtml(order.queueStatus)}" id="pill-${order.id}">${escapeHtml(order.queueStatus)}</span>
@@ -2272,7 +2274,7 @@
     }
 
     function setQueueBodyMsg(msg) {
-      queueBody.innerHTML = `<tr class="empty-row"><td colspan="8">${escapeHtml(msg)}</td></tr>`;
+      queueBody.innerHTML = `<tr class="empty-row"><td colspan="9">${escapeHtml(msg)}</td></tr>`;
     }
 
     /* ── ATTRIBUTION ── */

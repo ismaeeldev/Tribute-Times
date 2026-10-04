@@ -285,6 +285,7 @@ function registerAdminFulfilmentRoutes(app, { supabase, sendEmail, stripe }) {
             delivery_priority,
             needs_fulfilment,
             payment_status,
+            total_amount_nzd,
             created_at,
             shipping_name,
             shipping_address_line1,
@@ -3156,6 +3157,7 @@ async function loadFulfilmentOrders(supabase) {
       delivery_priority,
       needs_fulfilment,
       payment_status,
+      total_amount_nzd,
       created_at,
       shipping_name,
       shipping_address_line1,
@@ -3202,6 +3204,7 @@ async function loadFulfilmentOrderById(supabase, orderId) {
       delivery_priority,
       needs_fulfilment,
       payment_status,
+      total_amount_nzd,
       created_at,
       shipping_name,
       shipping_address_line1,
@@ -3283,6 +3286,19 @@ function buildAdminOrderResponse(order) {
     deliveryOptionLabel: resolveDeliveryLabel(deliveryOption),
     deliveryPriority: Number(order.delivery_priority || 99),
     queueStatus: normalizeDisplayStatus(order.queue_status),
+    // Fix, Oct 2026 (checklist item 12, found during a full deep re-audit):
+    // the admin Fulfilment Queue — the screen Col actually uses to manage
+    // orders — never showed an order's amount or currency at all.
+    // total_amount_nzd wasn't even in the SELECT clause of either loader
+    // function above. The real Stripe charge is always NZD regardless of
+    // the customer's displayed currency (the already-documented
+    // cross-cutting finding from Items 2-4/8) — PHASE2_CONFIG.defaultCurrencyCode
+    // ('NZD') is the real, correct currency code for every order here, not
+    // a guess.
+    totalAmountNzd: order.total_amount_nzd !== undefined && order.total_amount_nzd !== null
+      ? Number(order.total_amount_nzd)
+      : null,
+    currencyCode: PHASE2_CONFIG.defaultCurrencyCode,
     createdAt: order.created_at,
     shippingAddress,
     pdfUrl: `/api/admin/orders/${order.id}/download-pdf`,
