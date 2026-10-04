@@ -1089,7 +1089,7 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 
 **This is a question, not an implementation request — no code change made, per instruction. Not a "not yet implemented" item in the usual sense (there's nothing to build), just answered and logged here for the record.**
 
-**Answer, confirmed by reading the actual calculation code (`src/phase2/admin-fulfilment.js:2894-2922`, `buildAttributionReport()`), not guessed:**
+**Answer, confirmed by reading the actual calculation code (`buildAttributionReport()` in `src/phase2/admin-fulfilment.js` — line number has shifted since this was first written, due to later fixes added earlier in the file this session; confirmed the function and its logic are otherwise unchanged), not guessed:**
 - **Total/Pending/Printed/Posted/Delivered** (top tiles): physical-order fulfilment status counts — how many orders exist, and where each one is in the print → post → deliver pipeline. Only counts orders needing physical fulfilment.
 - **Free Demos**: how many free demo keepsakes have been generated **this calendar month** (resets on the 1st) — ties to a consultant's monthly free-demo allowance.
 - **Paid Sales**: count of paid orders **this calendar month**.
@@ -1125,7 +1125,7 @@ Found 4 real order attempts from `helenfrancesmccabe@gmail.comh` (confirmed this
 
 **Client message (2 Oct 2026):** Screenshot of the admin panel's "Approve Reseller Request" confirmation dialog, which reads: *"Approve this reseller request? This creates a real reseller account and auto-generates their promo code."* Asking whether to approve, and what the real consequence is.
 
-**Analysis (confirmed by reading the real approval endpoint, `src/phase2/admin-fulfilment.js:2372-2439`, `POST /api/admin/reseller-requests/:id/approve` — not guessed):**
+**Analysis (confirmed by reading the real approval endpoint, `POST /api/admin/reseller-requests/:id/approve` in `src/phase2/admin-fulfilment.js` — line number has shifted since this was first written, due to later fixes added earlier in the file this session; re-confirmed fresh, 4 Oct 2026, via a live, real end-to-end approval test in this same deep-audit pass — items 50-52 — including the "which business type" prompt genuinely firing correctly before approval, exactly as described below):**
 
 **What clicking "Approve" actually, concretely does:**
 1. Creates a **real agent/consultant account** from everything the applicant submitted on the public sign-up form (name, email, phone, address, business type, social-media follower counts) — confirmed this pulls real structured data, not placeholder values.
@@ -1169,7 +1169,7 @@ Looked up `colinM100` directly in the live database: `code_type: "consultant_dem
 
 **Follow-up question from Col: can the existing `colinM100` code just be edited to add a discount, instead of creating a new one?**
 
-Checked directly: `PUT /api/admin/promo-codes/:id` (`src/phase2/admin-fulfilment.js:1045-1076`) — the only endpoint that edits an existing code — explicitly lists its editable fields: `consultant_id`, `code` (the text itself), `monthlyFreeDemoLimit`, `active`, `notes`. **`discount_type` and `discount_value` are not in this list at all — there is no way, in the current admin UI/API, to edit an existing `consultant_demo` code like `colinM100` to add a discount to it.** Confirmed this isn't an oversight in reading the code wrong — the edit endpoint simply doesn't touch those two fields, by design, since `consultant_demo` codes were never meant to carry a discount at all.
+Checked directly: `PUT /api/admin/promo-codes/:id` in `src/phase2/admin-fulfilment.js` (line number has shifted since originally written, due to later fixes added earlier in the file this session; re-confirmed fresh, 4 Oct 2026, the field list is unchanged) — the only endpoint that edits an existing code — explicitly lists its editable fields: `consultant_id`, `code` (the text itself), `monthlyFreeDemoLimit`, `active`, `notes`. **`discount_type` and `discount_value` are not in this list at all — there is no way, in the current admin UI/API, to edit an existing `consultant_demo` code like `colinM100` to add a discount to it.** Confirmed this isn't an oversight in reading the code wrong — the edit endpoint simply doesn't touch those two fields, by design, since `consultant_demo` codes were never meant to carry a discount at all.
 
 **Answer: Col cannot just edit `colinM100` to add a discount — the edit screen doesn't support that field.** The only real path is creating a new, separate code via the "+ Create Codes" discount-code screen (which does support setting a discount). He can choose any code text for that new one, including re-using a similar name if he wants, but it would be a genuinely new/different code row, not an edit of the existing `colinM100`.
 
