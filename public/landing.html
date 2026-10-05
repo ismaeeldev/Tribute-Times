@@ -68,18 +68,20 @@ body {
   border-bottom: 1px solid var(--card-border);
   display: flex;
   justify-content: center;
-  padding: 28px 24px;
+  align-items: center;
+  /* Client request, 4 Oct 2026 (Col): logo size decreased further
+     (190px -> 150px), band height kept in proportion to preserve the
+     same ~2px minimal margin around the logo. */
+  padding: 0 24px;
+  height: 154px;
 }
 .header-logo-link {
   display: flex;
   text-decoration: none;
 }
 .header-logo-img {
-  /* Larger than the old in-nav-row size (80px) since this now has a
-     whole dedicated banner row to itself, capped so it doesn't dominate
-     at very wide viewports. width stays auto — never distorts. */
-  height: 120px;
-  max-height: 14vw;
+  height: 150px;
+  max-height: 26vw;
   width: auto;
   display: block;
 }
