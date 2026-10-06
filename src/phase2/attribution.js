@@ -36,9 +36,19 @@ async function resolveFreeDemoAttribution({ supabase, promoCode }) {
   const usedThisMonth = await countMonthlyFreeDemos(supabase, promo.id);
   const limit = Number(promo.monthly_free_demo_limit || 0);
 
+  // Fix, 6 Oct 2026 (client confusion, Col: TT50OFF "not working" when
+  // typed into this form): this field is for free-demo codes only — a
+  // code like TT50OFF (code_type 'campaign_single_use', a payment
+  // discount, monthly_free_demo_limit 0) was never meant to be usable
+  // here at all, and the generic "used all 0 free demos" message read
+  // like a bug. Distinguishing that case from a real monthly-limit
+  // exhaustion (limit > 0) so the message tells the customer where the
+  // code actually belongs instead of implying something is broken.
   if (usedThisMonth >= limit) {
-    const error = new Error(`Promo code ${promo.code} has used all ${limit} free demos for this month.`);
-    error.statusCode = 429;
+    const error = limit <= 0
+      ? new Error(`Promo code ${promo.code} is a discount code for the payment step, not a free-demo code. Leave this field blank and enter it at checkout instead.`)
+      : new Error(`Promo code ${promo.code} has used all ${limit} free demos for this month.`);
+    error.statusCode = limit <= 0 ? 400 : 429;
     throw error;
   }
 
